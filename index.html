@@ -2087,6 +2087,109 @@
 
   </div>
 
+  <!-- Modal: Edit School Details (शाळा माहिती संपादन) -->
+  <div id="editSchoolModal" class="modal-backdrop" style="display: none; z-index: 1000005;">
+    <div class="modal-dialog" style="max-width: 540px;">
+      <div class="modal-content" style="border-top: 4px solid #3b82f6; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);">
+        <div class="modal-header" style="background: #eff6ff; display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem;">
+          <h3 class="modal-title" style="color: #1e40af; font-size: 1.15rem; font-weight: 800; margin: 0;">✏️ शाळा माहिती संपादन करा</h3>
+          <button class="modal-close-btn" type="button" onclick="app.closeEditSchoolModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 1.25rem;">
+          <div id="editSchoolAlert" class="alert alert-danger d-none py-2 px-3 mb-3 small" role="alert"></div>
+
+          <input type="hidden" id="editSchoolOriginalUdise" value="">
+
+          <div class="mb-3">
+            <label for="editSchoolName" class="form-label fw-bold small text-dark">शाळेचे नाव:</label>
+            <input type="text" class="form-control" id="editSchoolName" placeholder="उदा. रा.जि.प. प्राथमिक शाळा...">
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-7">
+              <label for="editSchoolUdise" class="form-label fw-bold small text-dark">11 अंकी UDISE कोड:</label>
+              <input type="text" class="form-control fw-bold" id="editSchoolUdise" maxlength="11" placeholder="27240304501" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 11)">
+              <small class="text-muted" style="font-size: 0.72rem;">UDISE बदलल्यास डेटा नवीन कोडवर स्थलांतरित होईल.</small>
+            </div>
+            <div class="col-md-5">
+              <label for="editSchoolPat" class="form-label fw-bold small text-dark">विद्यार्थी पट:</label>
+              <input type="number" class="form-control" id="editSchoolPat" min="1" max="5000" placeholder="9">
+            </div>
+          </div>
+
+          <div class="row g-2 mb-2">
+            <div class="col-md-4">
+              <label for="editSchoolCentre" class="form-label fw-bold small text-dark">केंद्र:</label>
+              <input type="text" class="form-control" id="editSchoolCentre" placeholder="खांडस">
+            </div>
+            <div class="col-md-4">
+              <label for="editSchoolTaluka" class="form-label fw-bold small text-dark">तालुका:</label>
+              <input type="text" class="form-control" id="editSchoolTaluka" placeholder="कर्जत">
+            </div>
+            <div class="col-md-4">
+              <label for="editSchoolDistrict" class="form-label fw-bold small text-dark">जिल्हा:</label>
+              <input type="text" class="form-control" id="editSchoolDistrict" placeholder="रायगड">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between" style="padding: 0.85rem 1.25rem; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+          <button type="button" class="btn btn-outline-secondary" onclick="app.closeEditSchoolModal()">
+            रद्द करा
+          </button>
+          <button type="button" class="btn btn-primary fw-bold px-4" onclick="app.saveEditedSchool()">
+            💾 जतन करा (Save)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Delete School PIN Verification (शाळा डिलीट सुरक्षा PIN) -->
+  <div id="deleteSchoolModal" class="modal-backdrop" style="display: none; z-index: 1000006;">
+    <div class="modal-dialog" style="max-width: 480px;">
+      <div class="modal-content" style="border-top: 4px solid #ef4444; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);">
+        <div class="modal-header" style="background: #fef2f2; display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem;">
+          <h3 class="modal-title" style="color: #991b1b; font-size: 1.15rem; font-weight: 800; margin: 0;">🗑️ शाळा डिलीट सुरक्षा पडताळणी</h3>
+          <button class="modal-close-btn" type="button" onclick="app.closeDeleteSchoolModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 1.25rem;">
+          <div id="deleteSchoolAlert" class="alert alert-danger d-none py-2 px-3 mb-3 small" role="alert"></div>
+
+          <input type="hidden" id="deleteSchoolTargetUdise" value="">
+
+          <div class="p-3 mb-3" style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 8px;">
+            <div class="d-flex align-items-center gap-2 mb-1">
+              <span style="font-size: 1.2rem;">⚠️</span>
+              <strong style="color: #9f1239; font-size: 0.95rem;">शाळा आणि स्थानिक डेटा कायमचा हटवला जाईल</strong>
+            </div>
+            <p class="mb-1 small" style="color: #881337;">
+              शाळा: <strong id="deleteSchoolTargetName" class="text-dark">-</strong>
+            </p>
+            <p class="mb-0 small" style="color: #881337;">
+              UDISE: <code id="deleteSchoolTargetCode" style="font-weight: 700; color: #9f1239; background: #ffe4e6; padding: 1px 6px; border-radius: 4px;">-</code>
+            </p>
+          </div>
+
+          <div class="mb-3">
+            <label for="deleteSchoolPinInput" class="form-label fw-bold small text-dark">
+              🔒 शाळा डिलीट करण्यासाठी सुरक्षा PIN टाका:
+            </label>
+            <input type="password" class="form-control form-control-lg text-center fw-bold" id="deleteSchoolPinInput" placeholder="सुरक्षा PIN प्रविष्ट करा" autocomplete="off" onkeydown="if(event.key==='Enter') app.confirmDeleteSchool()">
+            <small class="text-muted" style="font-size: 0.75rem;">शाळा डिलीट करण्यासाठी अधिकृत PIN प्रविष्ट करणे आवश्यक आहे.</small>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between" style="padding: 0.85rem 1.25rem; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+          <button type="button" class="btn btn-outline-secondary" onclick="app.closeDeleteSchoolModal()">
+            रद्द करा
+          </button>
+          <button type="button" class="btn btn-danger fw-bold px-4" onclick="app.confirmDeleteSchool()">
+            🗑️ शाळा डिलीट करा
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Application Logic Scripts -->
   <script src="cloud-sync.js"></script>
   <script src="excel-engine.js"></script>

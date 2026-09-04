@@ -14,6 +14,9 @@ const app = {
     'd1d165a6b5f47b3af08842db98701f1c1750ba95913f58a1d582c21305a9cc3d': { days: 365, type: 'yearly', name: '1 वर्ष पूर्ण परवाना (365 दिवस)' }
   },
 
+  // सुरक्षित शाळा डिलीट PIN हॅश (SHA-256 Hash - PIN: Ican@123)
+  DELETE_PIN_HASH: 'af9470302e8ae1d23fdc6dbf798c547270eda21c7e960719e2633b6613644805',
+
   ACTIVATION_STORAGE_KEY: 'MDM_ACTIVATION_DATA',
   ACTIVE_UDISE_STORAGE_KEY: 'MDM_CURRENT_UDISE',
   REGISTERED_SCHOOLS_KEY: 'MDM_REGISTERED_SCHOOLS',
@@ -178,9 +181,9 @@ const app = {
   getRegisteredSchools() {
     try {
       const raw = localStorage.getItem(this.REGISTERED_SCHOOLS_KEY);
-      if (raw) {
+      if (raw !== null) {
         const list = JSON.parse(raw);
-        if (Array.isArray(list) && list.length > 0) return list;
+        if (Array.isArray(list)) return list;
       }
     } catch (e) {
       console.warn("Could not read registered schools:", e);
@@ -233,27 +236,347 @@ const app = {
   },
 
   /**
-   * Remove a school from registered list (if confirmed by user)
+   * Open Delete School Modal with PIN verification
+   */
+  openDeleteSchoolModal(udise) {
+    if (!udise) return;
+    const cleanUdise = String(udise).trim();
+    const list = this.getRegisteredSchools();
+    const school = list.find(s => s.udise === cleanUdise);
+    const name = school ? school.schoolName : `शाळा (${cleanUdise})`;
+
+    const targetUdiseInp = document.getElementById('deleteSchoolTargetUdise');
+    const nameDisplay = document.getElementById('deleteSchoolTargetName');
+    const udiseDisplay = document.getElementById('deleteSchoolTargetCode');
+    const pinInp = document.getElementById('deleteSchoolPinInput');
+    const alertBox = document.getElementById('deleteSchoolAlert');
+
+    if (targetUdiseInp) targetUdiseInp.value = cleanUdise;
+    if (nameDisplay) nameDisplay.textContent = name;
+    if (udiseDisplay) udiseDisplay.textContent = cleanUdise;
+    if (pinInp) {
+      pinInp.value = '';
+      pinInp.classList.remove('is-invalid');
+    }
+    if (alertBox) {
+      alertBox.textContent = '';
+      alertBox.classList.add('d-none');
+    }
+
+    const modal = document.getElementById('deleteSchoolModal');
+    if (modal) {
+      modal.style.display = 'flex';
+      if (pinInp) setTimeout(() => pinInp.focus(), 200);
+    } else {
+      // Fallback for headless environments
+      const enteredPin = prompt(`⚠️ शाळा '${name}' डिलीट करण्यासाठी सुरक्षा PIN टाका:`);
+      if (enteredPin) {
+        this.deleteSchool(cleanUdise, enteredPin);
+      }
+    }
+  },
+
+  /**
+   * Close Delete School Modal and wipe PIN
+   */
+  closeDeleteSchoolModal() {
+    const pinInp = document.getElementById('deleteSchoolPinInput');
+    if (pinInp) pinInp.value = '';
+    const modal = document.getElementById('deleteSchoolModal');
+    if (modal) modal.style.display = 'none';
+  },
+
+  /**
+   * Confirm PIN and execute deletion
+   */
+  confirmDeleteSchool() {
+    const targetUdiseInp = document.getElementById('deleteSchoolTargetUdise');
+    const pinInp = document.getElementById('deleteSchoolPinInput');
+    const alertBox = document.getElementById('deleteSchoolAlert');
+
+    const udise = targetUdiseInp ? targetUdiseInp.value.trim() : '';
+    const pin = pinInp ? pinInp.value.trim() : '';
+
+    if (pinInp) pinInp.value = ''; // Never keep PIN in DOM
+
+    if (!pin) {
+      if (alertBox) {
+        alertBox.textContent = '❌ कृपया शाळा डिलीट करण्यासाठी सुरक्षा PIN प्रविष्ट करा.';
+        alertBox.classList.remove('d-none');
+      }
+      if (pinInp) {
+        pinInp.classList.add('is-invalid');
+        pinInp.focus();
+      }
+      return false;
+    }
+
+    if (this.sha256(pin) !== this.DELETE_PIN_HASH) {
+      if (alertBox) {
+        alertBox.textContent = '❌ चुकीचा सुरक्षा PIN! शाळा डिलीट करता येणार नाही.';
+        alertBox.classList.remove('d-none');
+      }
+      if (pinInp) {
+        pinInp.classList.add('is-invalid');
+        pinInp.focus();
+      }
+      return false;
+    }
+
+    // PIN is correct! Close modal and execute deletion
+    this.closeDeleteSchoolModal();
+    return this.executeDeleteSchool(udise);
+  },
+
+  /**
+   * Execute permanent school deletion: removes storage bucket, backup, and registry entry
+   */
+  executeDeleteSchool(udise) {
+    if (!udise) return false;
+    const cleanUdise = String(udise).trim();
+    const list = this.getRegisteredSchools();
+    const school = list.find(s => s.udise === cleanUdise);
+    const name = school ? school.schoolName : `शाळा (${cleanUdise})`;
+
+    const activeUdise = this.getActiveUdise();
+    const isDeletingActive = (activeUdise === cleanUdise);
+
+    // 1. Remove storage data and backups
+    localStorage.removeItem(this.getSchoolStorageKey(cleanUdise));
+    localStorage.removeItem(this.getSchoolBackupKey(cleanUdise));
+
+    // 2. Remove from registry
+    let updatedList = list.filter(s => s.udise !== cleanUdise);
+    localStorage.setItem(this.REGISTERED_SCHOOLS_KEY, JSON.stringify(updatedList));
+
+    this.showToast(`🗑️ '${name}' शाळा यशस्वीरित्या डिलीट केली.`, 'info');
+
+    // 3. If currently active school was deleted
+    if (isDeletingActive) {
+      localStorage.removeItem(this.ACTIVE_UDISE_STORAGE_KEY);
+      if (this.data && this.data.settings) {
+        this.data.settings.udise = '';
+      }
+      this.closeSchoolSwitcherModal();
+      if (updatedList.length > 0) {
+        // Switch to the first available school without re-saving deleted school
+        this.loginSchool(updatedList[0].udise);
+      } else {
+        // Return to login screen
+        this.checkAccessControl();
+      }
+    } else {
+      this.renderRegisteredSchoolsList();
+    }
+    return true;
+  },
+
+  /**
+   * Delete school method with optional PIN verification
+   * If PIN not passed, opens PIN prompt modal
+   */
+  deleteSchool(udise, pin = null) {
+    if (!udise) return false;
+    if (pin !== null) {
+      if (this.sha256(String(pin).trim()) !== this.DELETE_PIN_HASH) {
+        this.showToast('❌ चुकीचा सुरक्षा PIN!', 'danger');
+        return false;
+      }
+      return this.executeDeleteSchool(udise);
+    }
+    this.openDeleteSchoolModal(udise);
+    return true;
+  },
+
+  /**
+   * Alias for backwards compatibility
    */
   removeRegisteredSchool(udise) {
-    if (confirm(`तुम्हाला शाळा (${udise}) या डिव्हाइसच्या यादीतून काढायची आहे का?\n(टीप: शाळेचा डेटा नष्ट होणार नाही, फक्त यादीतून नाव निघेल)`)) {
-      let list = this.getRegisteredSchools();
-      list = list.filter(s => s.udise !== udise);
-      if (list.length === 0) {
-        list = [{
-          udise: "27240304501",
-          schoolName: "रा.जि.प. प्राथमिक शाळा मेंगाळवाडी",
-          centre: "खांडस",
-          taluka: "कर्जत",
-          district: "रायगड",
-          pat: 9,
-          lastActive: new Date().toISOString()
-        }];
-      }
-      localStorage.setItem(this.REGISTERED_SCHOOLS_KEY, JSON.stringify(list));
-      this.renderRegisteredSchoolsList();
-      this.showToast('शाळा यादीतून काढण्यात आली.', 'info');
+    this.deleteSchool(udise);
+  },
+
+  /**
+   * Open Edit School Modal
+   */
+  openEditSchoolModal(udise) {
+    if (!udise) return;
+    const cleanUdise = String(udise).trim();
+    const list = this.getRegisteredSchools();
+    const school = list.find(s => s.udise === cleanUdise);
+    if (!school) return;
+
+    // Populate modal inputs
+    const originalUdiseInp = document.getElementById('editSchoolOriginalUdise');
+    const nameInp = document.getElementById('editSchoolName');
+    const udiseInp = document.getElementById('editSchoolUdise');
+    const centreInp = document.getElementById('editSchoolCentre');
+    const talukaInp = document.getElementById('editSchoolTaluka');
+    const districtInp = document.getElementById('editSchoolDistrict');
+    const patInp = document.getElementById('editSchoolPat');
+    const alertBox = document.getElementById('editSchoolAlert');
+
+    if (originalUdiseInp) originalUdiseInp.value = cleanUdise;
+    if (nameInp) nameInp.value = school.schoolName || '';
+    if (udiseInp) udiseInp.value = cleanUdise;
+    if (centreInp) centreInp.value = school.centre || '';
+    if (talukaInp) talukaInp.value = school.taluka || '';
+    if (districtInp) districtInp.value = school.district || '';
+    if (patInp) patInp.value = school.pat || 9;
+    if (alertBox) {
+      alertBox.textContent = '';
+      alertBox.classList.add('d-none');
     }
+
+    const modal = document.getElementById('editSchoolModal');
+    if (modal) modal.style.display = 'flex';
+  },
+
+  /**
+   * Close Edit School Modal
+   */
+  closeEditSchoolModal() {
+    const modal = document.getElementById('editSchoolModal');
+    if (modal) modal.style.display = 'none';
+  },
+
+  /**
+   * Save Edited School details
+   */
+  saveEditedSchool() {
+    const originalUdise = (document.getElementById('editSchoolOriginalUdise') ? document.getElementById('editSchoolOriginalUdise').value : '').trim();
+    const name = (document.getElementById('editSchoolName') ? document.getElementById('editSchoolName').value : '').trim();
+    const newUdise = (document.getElementById('editSchoolUdise') ? document.getElementById('editSchoolUdise').value : '').trim();
+    const centre = (document.getElementById('editSchoolCentre') ? document.getElementById('editSchoolCentre').value : '').trim();
+    const taluka = (document.getElementById('editSchoolTaluka') ? document.getElementById('editSchoolTaluka').value : '').trim();
+    const district = (document.getElementById('editSchoolDistrict') ? document.getElementById('editSchoolDistrict').value : '').trim();
+    const pat = parseInt(document.getElementById('editSchoolPat') ? document.getElementById('editSchoolPat').value : '9') || 9;
+    const alertBox = document.getElementById('editSchoolAlert');
+
+    if (!name) {
+      if (alertBox) {
+        alertBox.textContent = '❌ कृपया शाळेचे नाव प्रविष्ट करा.';
+        alertBox.classList.remove('d-none');
+      }
+      return false;
+    }
+
+    if (!/^\d{11}$/.test(newUdise)) {
+      if (alertBox) {
+        alertBox.textContent = '❌ UDISE कोड अचूक 11 इंग्रजी अंकांचा असावा (उदा. 27240304501).';
+        alertBox.classList.remove('d-none');
+      }
+      return false;
+    }
+
+    // Check if new UDISE collides with another existing school
+    if (newUdise !== originalUdise) {
+      const list = this.getRegisteredSchools();
+      if (list.some(s => s.udise === newUdise)) {
+        if (alertBox) {
+          alertBox.textContent = `❌ या UDISE (${newUdise}) सह आधीच दुसरी शाळा यादीत अस्तित्वात आहे!`;
+          alertBox.classList.remove('d-none');
+        }
+        return false;
+      }
+
+      // Migrate storage bucket from originalUdise to newUdise
+      const oldStorageKey = this.getSchoolStorageKey(originalUdise);
+      const newStorageKey = this.getSchoolStorageKey(newUdise);
+      const oldBackupKey = this.getSchoolBackupKey(originalUdise);
+      const newBackupKey = this.getSchoolBackupKey(newUdise);
+
+      const oldData = localStorage.getItem(oldStorageKey);
+      if (oldData) {
+        try {
+          const parsed = JSON.parse(oldData);
+          if (parsed.settings) parsed.settings.udise = newUdise;
+          localStorage.setItem(newStorageKey, JSON.stringify(parsed));
+          localStorage.removeItem(oldStorageKey);
+        } catch(e) {}
+      }
+
+      const oldBackup = localStorage.getItem(oldBackupKey);
+      if (oldBackup) {
+        try {
+          const parsedB = JSON.parse(oldBackup);
+          if (parsedB.settings) parsedB.settings.udise = newUdise;
+          localStorage.setItem(newBackupKey, JSON.stringify(parsedB));
+          localStorage.removeItem(oldBackupKey);
+        } catch(e) {}
+      }
+
+      // If this was active school, update active UDISE pointer
+      if (this.getActiveUdise() === originalUdise) {
+        localStorage.setItem(this.ACTIVE_UDISE_STORAGE_KEY, newUdise);
+      }
+    }
+
+    // Update the school's local stored data settings
+    const targetKey = this.getSchoolStorageKey(newUdise);
+    const existingRaw = localStorage.getItem(targetKey);
+    let targetData = null;
+    if (existingRaw) {
+      try { targetData = JSON.parse(existingRaw); } catch(e) {}
+    }
+    if (!targetData) targetData = this.createDefaultSchoolData(newUdise, name);
+    if (!targetData.settings) targetData.settings = {};
+
+    targetData.settings.schoolName = name;
+    targetData.settings.udise = newUdise;
+    targetData.settings.centre = centre;
+    targetData.settings.taluka = taluka;
+    targetData.settings.district = district;
+    targetData.settings.pat = pat;
+    localStorage.setItem(targetKey, JSON.stringify(targetData));
+
+    // Update active in-memory app.data if currently loaded school is this school
+    const isCurrentlyActive = (localStorage.getItem(this.ACTIVE_UDISE_STORAGE_KEY) === newUdise) ||
+                              (this.data && this.data.settings && (this.data.settings.udise === originalUdise || this.data.settings.udise === newUdise));
+
+    if (isCurrentlyActive) {
+      localStorage.setItem(this.ACTIVE_UDISE_STORAGE_KEY, newUdise);
+      if (this.data && this.data.settings) {
+        this.data.settings.schoolName = name;
+        this.data.settings.udise = newUdise;
+        this.data.settings.centre = centre;
+        this.data.settings.taluka = taluka;
+        this.data.settings.district = district;
+        this.data.settings.pat = pat;
+      }
+      this.updateHeaderMeta();
+      if (typeof cloudSync !== 'undefined' && cloudSync.onSchoolSwitched) {
+        cloudSync.onSchoolSwitched(newUdise);
+      }
+    }
+
+    // Update registry entry
+    let list = this.getRegisteredSchools();
+    // Remove old entry if UDISE changed
+    if (newUdise !== originalUdise) {
+      list = list.filter(s => s.udise !== originalUdise);
+    }
+    const existingIdx = list.findIndex(s => s.udise === newUdise);
+    const schoolEntry = {
+      udise: newUdise,
+      schoolName: name,
+      centre: centre,
+      taluka: taluka,
+      district: district,
+      pat: pat,
+      lastActive: new Date().toISOString()
+    };
+    if (existingIdx >= 0) {
+      list[existingIdx] = Object.assign({}, list[existingIdx], schoolEntry);
+    } else {
+      list.unshift(schoolEntry);
+    }
+    localStorage.setItem(this.REGISTERED_SCHOOLS_KEY, JSON.stringify(list));
+
+    // Re-render UI
+    this.renderRegisteredSchoolsList();
+    this.closeEditSchoolModal();
+    this.showToast(`🎉 शाळा माहिती यशस्वीरीत्या जतन झाली! (${name})`, 'success');
+    return true;
   },
 
   /**
@@ -422,6 +745,12 @@ const app = {
               </div>
             </div>
             <div class="school-card-actions">
+              <button type="button" class="btn btn-sm btn-outline-primary btn-icon-action" title="शाळा माहिती संपादन करा" onclick="app.openEditSchoolModal('${s.udise}')">
+                ✏️ संपादन
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-danger btn-icon-action" title="शाळा डिलीट करा" onclick="app.deleteSchool('${s.udise}')">
+                🗑️ हटवा
+              </button>
               <button type="button" class="btn btn-sm btn-success px-3" onclick="app.loginSchool('${s.udise}')">
                 प्रवेश करा ⚡
               </button>
@@ -453,6 +782,12 @@ const app = {
                 </div>
               </div>
               <div class="school-card-actions">
+                <button type="button" class="btn btn-sm btn-outline-primary btn-icon-action" title="शाळा माहिती संपादन करा" onclick="app.openEditSchoolModal('${s.udise}')">
+                  ✏️ संपादन
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger btn-icon-action" title="शाळा डिलीट करा" onclick="app.deleteSchool('${s.udise}')">
+                  🗑️ हटवा
+                </button>
                 ${isActive ? 
                   `<button type="button" class="btn btn-sm btn-outline-secondary" disabled>निवडलेली</button>` : 
                   `<button type="button" class="btn btn-sm btn-outline-primary" onclick="app.switchSchoolDirectly('${s.udise}')">स्विच करा 🔄</button>`

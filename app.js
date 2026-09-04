@@ -2809,6 +2809,36 @@ const app = {
     }
 
     this.data.records[dateStr] = record;
+
+    // स्वयंचलित चव नोंद सिंक: फक्त दैनिक मध्ये नोंद भरल्यावरच चव ऑटो ने भरणे
+    if (!this.data.tasteRecords) this.data.tasteRecords = {};
+    if (!isHoliday && children > 0) {
+      const existingTaste = this.data.tasteRecords[dateStr];
+      if (!existingTaste || existingTaste.isAuto) {
+        const dObj = new Date(dateStr + "T12:00:00");
+        const dNum = dObj.getDate();
+        const shortRemarks = ["उत्तम", "चविष्ट", "उत्तम", "चांगली", "चविष्ट"];
+        const rIdx = (dNum - 1) % shortRemarks.length;
+        this.data.tasteRecords[dateStr] = {
+          date: dateStr,
+          time: '12:00 PM',
+          menuName: record.menuName,
+          testerName: this.data.settings.headmaster || 'मुख्याध्यापक',
+          testerRole: 'मुख्याध्यापक',
+          quality: 'उत्कृष्ट',
+          tasteRemark: shortRemarks[rIdx],
+          isAuto: true
+        };
+      } else {
+        existingTaste.menuName = record.menuName;
+      }
+    } else {
+      // ज्या दिवशी आहार भरला नाही (सुट्टी किंवा 0 मुले), त्या दिवशी चव नोंद कोरी ठेवणे
+      if (this.data.tasteRecords[dateStr] && this.data.tasteRecords[dateStr].isAuto) {
+        delete this.data.tasteRecords[dateStr];
+      }
+    }
+
     this.saveState();
 
     // Synchronize month pickers to the recorded month
@@ -4233,12 +4263,12 @@ const app = {
         continue;
       }
 
-      // 3. ज्या दिवशी पोषण आहार भरला आहे (Meal served) किंवा स्वतंत्र चव नोंद भरली आहे
+      // 3. ज्या दिवशी पोषण आहार भरला आहे (Meal served in daily records)
       const isMealServed = rec && !rec.isHoliday && Number(rec.children || 0) > 0;
       let taste = (this.data.tasteRecords && this.data.tasteRecords[dateStr]) ? this.data.tasteRecords[dateStr] : null;
 
-      // ज्या दिवसाचा पोषण आहार भरला नाही, त्या तारखेचा चव नोंद सर्व कॉलम BLANK ठेवणे
-      if (!isMealServed && !taste) {
+      // ज्या दिवशी पोषण आहार भरला नाही, त्या दिवशीचा चव रजिस्टर पूर्णपणे कोरा (BLANK) ठेवणे
+      if (!isMealServed) {
         const tr = document.createElement('tr');
         tr.className = 'empty-meal-row';
         tr.innerHTML = `
@@ -4259,8 +4289,9 @@ const app = {
       }
 
       workingDaysCount++;
-      let menuName = rec ? this.getDisplayMenuName(rec) : this.getDefaultMenuForDay(dateStr);
+      let menuName = this.getDisplayMenuName(rec);
 
+      // फक्त ज्या दिवशी दैनिक मध्ये नोंद आहे तिथेच चव ऑटो ने भरणे
       if (!taste) {
         const remarkIdx = (d - 1) % standardShortRemarks.length;
         taste = {
@@ -4270,8 +4301,13 @@ const app = {
           testerName: set.headmaster || 'मुख्याध्यापक',
           testerRole: 'मुख्याध्यापक',
           quality: 'उत्कृष्ट',
-          tasteRemark: standardShortRemarks[remarkIdx]
+          tasteRemark: standardShortRemarks[remarkIdx],
+          isAuto: true
         };
+      } else {
+        if (!taste.menuName || taste.menuName === 'सुट्टी' || taste.isAuto) {
+          taste.menuName = menuName;
+        }
       }
 
       const qualityClass = (taste.quality === 'उत्कृष्ट') ? 'excellent' : ((taste.quality === 'उत्तम') ? 'good' : 'satisfactory');
@@ -4586,32 +4622,45 @@ const app = {
       const dayPad = String(d).padStart(2, '0');
       const dateStr = `${monthKey}-${dayPad}`;
       const dayOfWeek = new Date(dateStr + "T12:00:00").getDay();
-      if (dayOfWeek === 0) continue; // रविवारी आहार नसतो
 
       const rec = this.data.records ? this.data.records[dateStr] : null;
-      // फक्त ज्या तारखेला पोषण आहार भरला आहे (rec && !rec.isHoliday && rec.children > 0)
-      if (!rec || rec.isHoliday || Number(rec.children || 0) <= 0) continue;
+      const isMealServed = rec && !rec.isHoliday && Number(rec.children || 0) > 0;
+
+      // रविवारी किंवा ज्या दिवशी आहार भरला नाही, त्या दिवशीची चव नोंद काढून टाका (कोरा ठेवा)
+      if (dayOfWeek === 0 || !isMealServed) {
+        if (this.data.tasteRecords && this.data.tasteRecords[dateStr]) {
+          delete this.data.tasteRecords[dateStr];
+        }
+        continue;
+      }
 
       const menuName = this.getDisplayMenuName(rec);
-      if (menuName === 'सुट्टी') continue;
+      if (menuName === 'सुट्टी') {
+        if (this.data.tasteRecords && this.data.tasteRecords[dateStr]) {
+          delete this.data.tasteRecords[dateStr];
+        }
+        continue;
+      }
 
       const remarkIdx = (d - 1) % standardShortRemarks.length;
+      const existing = this.data.tasteRecords[dateStr];
 
       this.data.tasteRecords[dateStr] = {
         date: dateStr,
-        time: '12:00 PM',
+        time: (existing && existing.time) ? existing.time : '12:00 PM',
         menuName: menuName,
-        testerName: set.headmaster || 'मुख्याध्यापक',
-        testerRole: 'मुख्याध्यापक',
-        quality: 'उत्कृष्ट',
-        tasteRemark: standardShortRemarks[remarkIdx]
+        testerName: (existing && existing.testerName) ? existing.testerName : (set.headmaster || 'मुख्याध्यापक'),
+        testerRole: (existing && existing.testerRole) ? existing.testerRole : 'मुख्याध्यापक',
+        quality: (existing && existing.quality) ? existing.quality : 'उत्कृष्ट',
+        tasteRemark: (existing && existing.tasteRemark) ? existing.tasteRemark : standardShortRemarks[remarkIdx],
+        isAuto: !existing || existing.isAuto
       };
       addedCount++;
     }
 
     this.saveState();
     this.renderTasteRegister(monthKey);
-    this.showToast(`🎉 पोषण आहार भरलेल्या ${addedCount} कामकाजाच्या दिवसांसाठी चव नोंदवही पूर्ण झाली!`, 'success');
+    this.showToast(`🎉 दैनिक नोंद असलेल्या ${addedCount} दिवसांसाठी चव नोंदवही स्वयंचलित भरली (इतर दिवस कोरे ठेवले)!`, 'success');
   },
 
   printTasteRegister() {
@@ -4687,7 +4736,8 @@ const app = {
       const isMealServed = rec && !rec.isHoliday && Number(rec.children || 0) > 0;
       let taste = (this.data.tasteRecords && this.data.tasteRecords[dateStr]) ? this.data.tasteRecords[dateStr] : null;
 
-      if (!isMealServed && !taste) {
+      // ज्या दिवशी पोषण आहार भरला नाही, त्या दिवशी सर्व चव रकाने कोरे (BLANK) ठेवणे
+      if (!isMealServed) {
         rows.push([
           serialNum++,
           `${dayPad}/${parts[1]}/${year}`,
@@ -4703,7 +4753,7 @@ const app = {
         continue;
       }
 
-      const menuName = rec ? this.getDisplayMenuName(rec) : this.getDefaultMenuForDay(dateStr);
+      const menuName = this.getDisplayMenuName(rec);
       if (!taste) {
         taste = {
           time: '12:00 PM',

@@ -1,0 +1,2096 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>शालेय पोषण आहार दैनिक नोंद व अहवाल प्रणाली (MDM Daily Report System)</title>
+  <meta name="description" content="शालेय पोषण आहार दैनिक नोंद, स्वयंचलित धान्य हिशोब, मासिक प्रपत्र ब आणि एक्सेल अहवाल प्रणाली">
+  
+  <!-- Google Fonts: Noto Sans Devanagari & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Local SheetJS with CDN fallback -->
+  <script src="libs/xlsx.full.min.js"></script>
+  <script>
+    if (typeof XLSX === 'undefined') {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');
+    }
+  </script>
+
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- 1. Activation Lock Screen (ॲक्टिव्हेशन स्क्रीन) -->
+  <div id="activationScreen" class="auth-fullscreen-overlay" style="display: none;">
+    <div class="auth-card">
+      <div class="auth-header text-center">
+        <div class="auth-icon-circle">🔐</div>
+        <h2 class="auth-title">शालेय पोषण आहार (PM POSHAN)</h2>
+        <p class="auth-subtitle">सुरक्षित ॲक्टिव्हेशन लॉक स्क्रीन (Activation Lock)</p>
+      </div>
+
+      <div class="auth-body">
+        <div id="activationAlert" class="alert alert-danger d-none py-2 px-3 mb-3 small" role="alert"></div>
+
+        <div class="mb-3">
+          <label for="activationPasswordInput" class="form-label fw-bold small text-dark">
+            🔑 ॲक्टिव्हेशन पासवर्ड टाका:
+          </label>
+          <div class="input-group">
+            <input type="password" class="form-control form-control-lg" id="activationPasswordInput" placeholder="पासवर्ड प्रविष्ट करा..." autocomplete="off" onkeydown="if(event.key==='Enter') app.verifyActivation()">
+            <button class="btn btn-outline-secondary" type="button" onclick="app.togglePasswordVisibility('activationPasswordInput', 'activationEyeIcon')" title="पासवर्ड पहा / लपवा">
+              <span id="activationEyeIcon">👁️</span>
+            </button>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-lg w-100 mb-3 shadow-sm" onclick="app.verifyActivation()">
+          🔓 ॲक्टिव्हेट करा
+        </button>
+
+        <div class="activation-info-box">
+          <div class="info-item">
+            <span class="info-badge demo">1 महिना डेमो</span>
+            <span class="info-text">30 दिवस वैधतेसाठी अधिकृत ॲक्टिव्हेशन पासवर्ड प्रविष्ट करा.</span>
+          </div>
+          <div class="info-item mt-2">
+            <span class="info-badge yearly">1 वर्ष परवाना</span>
+            <span class="info-text">365 दिवस वैधतेसाठी पूर्ण परवाना पासवर्ड प्रविष्ट करा.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-footer text-center">
+        <small class="text-muted">PM POSHAN दैनिक नोंद व अहवाल प्रणाली | सर्व हक्क राखीव</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. School UDISE Direct Login Screen (शाळा थेट लॉगिन) -->
+  <div id="schoolLoginScreen" class="auth-fullscreen-overlay" style="display: none;">
+    <div class="auth-card" style="max-width: 520px;">
+      <div class="auth-header text-center">
+        <div class="auth-icon-circle school-icon">🏫</div>
+        <h2 class="auth-title">शाळा थेट लॉगिन (Multi-School)</h2>
+        <p class="auth-subtitle">नोंदवलेली शाळा निवडा किंवा नवीन 11 अंकी UDISE कोड टाकून थेट सुरू करा</p>
+      </div>
+
+      <div class="auth-body">
+        <div id="schoolLoginAlert" class="alert alert-danger d-none py-2 px-3 mb-3 small" role="alert"></div>
+
+        <!-- Registered Schools List -->
+        <div class="mb-3">
+          <label class="form-label fw-bold small text-dark d-flex justify-content-between align-items-center">
+            <span>🏫 नोंदवलेल्या शाळा (1-Click थेट प्रवेश):</span>
+            <span class="text-muted" style="font-size: 0.72rem;">या डिव्हाइसवरील सेव्ह शाळा</span>
+          </label>
+          <div id="registeredSchoolsList" class="registered-schools-list mb-2">
+            <!-- Dynamically populated by app.renderRegisteredSchoolsList() -->
+          </div>
+        </div>
+
+        <div class="auth-divider my-3">
+          <span>किंवा नवीन शाळा UDISE टाका</span>
+        </div>
+
+        <div class="mb-3">
+          <label for="schoolUdiseInput" class="form-label fw-bold small text-dark">
+            ➕ नवीन शाळेचा 11 अंकी UDISE कोड:
+          </label>
+          <div class="input-group input-group-lg">
+            <input type="text" class="form-control text-center fw-bold fs-4" id="schoolUdiseInput" maxlength="11" placeholder="उदा. 27240304501" autocomplete="off" oninput="app.onUdiseInput(this)" onkeydown="if(event.key==='Enter') app.loginSchool()">
+          </div>
+          <div class="d-flex justify-content-between mt-1">
+            <small class="text-muted">फक्त 11 इंग्रजी अंक टाका</small>
+            <small id="udiseDigitCount" class="text-muted fw-bold">0 / 11</small>
+          </div>
+        </div>
+
+        <!-- Backward compatible recent school box for test harnesses -->
+        <div id="recentSchoolBox" class="recent-school-card mb-3 d-none">
+          <span class="recent-lbl">मागील वापरलेली शाळा:</span>
+          <div class="d-flex justify-content-between align-items-center mt-1">
+            <div>
+              <strong id="recentSchoolName" class="text-dark small">रा.जि.प. प्राथमिक शाळा मेंगाळवाडी</strong>
+              <div class="small text-muted" id="recentSchoolUdise">UDISE: 27240304501</div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-success" onclick="app.quickLoginRecentSchool()">
+              निवडा ⚡
+            </button>
+          </div>
+        </div>
+
+        <button class="btn btn-success btn-lg w-100 mb-3 shadow-sm fw-bold" onclick="app.loginSchool()">
+          🚀 थेट लॉगिन करा / शाळा उघडा
+        </button>
+
+        <div class="text-center">
+          <span class="badge bg-light text-success border px-3 py-2">
+            🟢 ॲप ॲक्टिव्हेटेड (<span id="activeLicenseLabel">वैध</span>)
+          </span>
+        </div>
+      </div>
+
+      <div class="auth-footer text-center">
+        <small class="text-muted">टीप: प्रत्येक शाळेचा डेटा स्वतंत्रपणे सुरक्षित राहतो. शाळा बदलायची असल्यास "शाळा बदला" बटण वापरा.</small>
+      </div>
+    </div>
+  </div>
+
+  <div id="app" class="app-wrapper">
+    <!-- Top Header -->
+    <header class="app-header no-print">
+      <div class="header-container">
+        <div class="brand-section">
+          <div class="logo-badge">
+            <span class="logo-icon">🍲</span>
+          </div>
+          <div class="brand-details">
+            <h1 class="brand-title">शालेय पोषण आहार दैनिक नोंद प्रणाली</h1>
+            <p class="brand-subtitle" id="headerSchoolName">रा. जि. प. प्राथमिक शाळा मेंगाळवाडी | केंद्र: खांडस | ता. कर्जत, जि. रायगड</p>
+          </div>
+        </div>
+
+        <div class="header-meta">
+          <div class="meta-pill" id="currentDateBadge">
+            <span class="meta-icon">📅</span>
+            <span id="headerTodayText">आज: </span>
+          </div>
+          <div class="meta-pill highlight">
+            <span class="meta-icon">👥</span>
+            <span>पट: <strong id="headerPatCount">9</strong></span>
+          </div>
+          <div class="meta-pill udise-badge cursor-pointer" id="headerUdiseBadge" onclick="app.openSchoolSwitcherModal()" title="शाळा बदला / जलद स्विच करा (Switch School)">
+            <span class="meta-icon">🏫</span>
+            <span>UDISE: <strong id="headerUdiseCode">27240304501</strong> ▾</span>
+          </div>
+          <button class="btn btn-sm btn-outline-primary" id="switchSchoolBtn" onclick="app.openSchoolSwitcherModal()" title="शाळा बदला / जलद शाळा निवडा" style="border-color: rgba(59, 130, 246, 0.6); color: #93c5fd;">
+            <span>🔄 शाळा बदला</span>
+          </button>
+          <div class="meta-pill cloud-pill" id="cloudStatusPill" onclick="app.openCloudSyncModal()" style="cursor: pointer;" title="क्लाऊड सिंक नियंत्रण (Cloud Sync Settings)">
+            <span id="cloudStatusDot" class="status-dot" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; margin-right: 4px;"></span>
+            <span id="cloudStatusText">☁️ क्लाऊड सिंक</span>
+          </div>
+          <button class="btn btn-sm btn-outline-danger" id="logoutSchoolBtn" onclick="app.logoutSchool()" title="शाळा बदला / UDISE लॉगआउट करा" style="border-color: rgba(239, 68, 68, 0.6); color: #fca5a5;">
+            <span>🚪 लॉगआउट</span>
+          </button>
+          <button class="btn btn-sm btn-outline-light" id="quickTestBtn" onclick="app.switchTab('tests')">
+            <span>⚡ चाचणी तपासा</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Navigation Tabs -->
+      <nav class="main-nav">
+        <div class="nav-container">
+          <button class="nav-tab active" data-tab="daily" onclick="app.switchTab('daily')">
+            <span class="tab-icon">📝</span>
+            <span class="tab-label">दैनिक नोंद</span>
+          </button>
+          <button class="nav-tab" data-tab="register" onclick="app.switchTab('register')">
+            <span class="tab-icon">📖</span>
+            <span class="tab-label">दैनिक नोंदवही</span>
+          </button>
+          <button class="nav-tab" data-tab="monthly" onclick="app.switchTab('monthly')">
+            <span class="tab-icon">📊</span>
+            <span class="tab-label">मासिक अहवाल (Excel)</span>
+          </button>
+          <button class="nav-tab" data-tab="formb" onclick="app.switchTab('formb')">
+            <span class="tab-icon">📄</span>
+            <span class="tab-label">प्रपत्र ब (Form B)</span>
+          </button>
+          <button class="nav-tab" data-tab="yearly" onclick="app.switchTab('yearly')">
+            <span class="tab-icon">📅</span>
+            <span class="tab-label">वार्षिक अहवाल (1 एप्रिल - 31 मार्च)</span>
+          </button>
+          <button class="nav-tab" data-tab="taste" onclick="app.switchTab('taste')">
+            <span class="tab-icon">👅</span>
+            <span class="tab-label">चव नोंदवही</span>
+          </button>
+          <button class="nav-tab" data-tab="stock" onclick="app.switchTab('stock')">
+            <span class="tab-icon">📦</span>
+            <span class="tab-label">साठा व्यवस्थापन</span>
+          </button>
+          <button class="nav-tab" data-tab="io" onclick="app.switchTab('io')">
+            <span class="tab-icon">🔄</span>
+            <span class="tab-label">Excel आयात / निर्यात</span>
+          </button>
+          <button class="nav-tab" data-tab="settings" onclick="app.switchTab('settings')">
+            <span class="tab-icon">⚙️</span>
+            <span class="tab-label">सेटिंग्ज व नियम</span>
+          </button>
+          <button class="nav-tab" data-tab="tests" onclick="app.switchTab('tests')">
+            <span class="tab-icon">🧪</span>
+            <span class="tab-label">चाचणी (Tests)</span>
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="app-main">
+      
+      <!-- TAB 1: DAILY ENTRY (दैनिक नोंद) -->
+      <section id="tab-daily" class="tab-panel active">
+        <div class="container">
+          
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2 class="panel-title">दैनिक पोषण आहार नोंद व डॅशबोर्ड</h2>
+              <p class="panel-desc">फक्त तारीख निवडा, उपस्थित विद्यार्थी संख्या टाका आणि मेन्यू निवडा — बाकी सर्व आपोआप हिशोब होईल!</p>
+            </div>
+            <div class="panel-actions">
+              <span class="status-indicator live" id="entryStatusPill">🟢 नवीन नोंद</span>
+            </div>
+          </div>
+
+          <!-- Top Hero Stats Ribbon: Live Pulse & Metrics -->
+          <div class="daily-hero-stats-grid mb-4">
+            
+            <!-- Card 1: Today's Attendance -->
+            <div class="hero-stat-card card-attendance">
+              <div class="stat-icon-wrapper">
+                <span class="stat-icon">👥</span>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">आजची उपस्थिती (Attendance)</span>
+                <div class="stat-val-group">
+                  <span class="stat-value" id="heroStatChildren">8</span>
+                  <span class="stat-sub-total">/ <span id="heroStatPat">9</span> विद्यार्थी</span>
+                </div>
+                <div class="stat-badge-row">
+                  <span class="stat-pill-badge" id="heroStatAttRate">88.9% उपस्थिती</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 2: Today's Menu & Pulse -->
+            <div class="hero-stat-card card-menu">
+              <div class="stat-icon-wrapper">
+                <span class="stat-icon">🍲</span>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">आजचा मेनू (Today's Menu)</span>
+                <div class="stat-val-group">
+                  <span class="stat-value-text" id="heroStatMenu">मुगडाळ खिचडी</span>
+                </div>
+                <div class="stat-badge-row">
+                  <span class="stat-pill-badge pulse-badge" id="heroStatPulse">मूगडाळ</span>
+                  <span class="stat-pill-badge day-badge" id="heroStatDay">सोमवार</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 3: Main Grains Weight -->
+            <div class="hero-stat-card card-grains">
+              <div class="stat-icon-wrapper">
+                <span class="stat-icon">⚖️</span>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">एकूण मुख्य धान्य (Rice + Dal)</span>
+                <div class="stat-val-group">
+                  <span class="stat-value" id="heroStatTotalGrains">0.960</span>
+                  <span class="stat-unit">kg</span>
+                </div>
+                <div class="stat-badge-row">
+                  <span class="stat-pill-badge" id="heroStatRiceDalBreakdown">तांदूळ: 0.800 + डाळ: 0.160 kg</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 4: Fuel Grant -->
+            <div class="hero-stat-card card-fuel">
+              <div class="stat-icon-wrapper">
+                <span class="stat-icon">💰</span>
+              </div>
+              <div class="stat-info">
+                <span class="stat-label">इंधन व भाजीपाला खर्च (Fuel Grant)</span>
+                <div class="stat-val-group">
+                  <span class="stat-currency">₹</span>
+                  <span class="stat-value" id="heroStatFuelCost">12.08</span>
+                </div>
+                <div class="stat-badge-row">
+                  <span class="stat-pill-badge" id="heroStatFuelRate">दर: ₹1.51 / विद्यार्थी</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Stock Alert Banner if any ingredient is short -->
+          <div id="stockAlertBanner" class="alert alert-warning" style="display: none;">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-content">
+              <strong>उपलब्ध साठा अपुरा आहे!</strong>
+              <span id="stockAlertDetails">कृपया प्राप्त धान्याची नोंद तपासा किंवा साठा अद्ययावत करा.</span>
+            </div>
+          </div>
+
+          <!-- Main Entry Form Grid -->
+          <div class="entry-grid">
+            
+            <!-- Left Column: Input Controls -->
+            <div class="card entry-control-card">
+              <div class="card-header flex-between" style="background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border-bottom: 1.5px solid #dbeafe;">
+                <div class="d-flex align-items-center gap-2">
+                  <span style="font-size: 1.25rem;">📝</span>
+                  <h3 class="card-title" style="color: #1e3a8a;">1. दैनंदिन उपस्थिती व मेनू</h3>
+                </div>
+                <span class="badge badge-primary">⚡ 30 सेकंद नोंद</span>
+              </div>
+              <div class="card-body">
+                <form id="dailyEntryForm" onsubmit="event.preventDefault(); app.saveCurrentRecord();">
+                  
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="entryDate" class="form-label">
+                        <span>📅 दिनांक (Date)</span>
+                        <span class="req">*</span>
+                      </label>
+                      <input type="date" id="entryDate" class="form-control form-control-lg" required>
+                    </div>
+
+                    <div class="form-group flex-1">
+                      <label class="form-label">🗓️ वार (Day)</label>
+                      <div class="day-display-box" id="entryDayDisplay">
+                        <span id="entryDayText">सोमवार</span>
+                        <span class="day-code-tag" id="entryDayCodeTag">कोड: 2</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="entryHolidayToggle" class="form-label">🏫 कामाचा दिवस / सुट्टी</label>
+                      <select id="entryHolidayToggle" class="form-select">
+                        <option value="working">शाळा सुरू / नियमित आहार</option>
+                        <option value="holiday">सुट्टी (Holiday / Sunday)</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group flex-1">
+                      <label for="entryMenu" class="form-label font-bold">
+                        <span>🍲 आजचा आहार (Menu) <span class="req">*</span></span>
+                      </label>
+                      <select id="entryMenu" class="form-select form-select-lg" required>
+                        <!-- Dynamic Menu Options Populated via JS -->
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- Grain / Pulse Selection Mode (Auto by Menu vs Manual Dal/Pulse Selection) -->
+                  <div class="form-row mt-1">
+                    <div class="form-group flex-1">
+                      <label class="form-label font-bold" style="color: #1e293b;">
+                        <span>🌾 धान्य व डाळ निवड पद्धत (Grain Selection Mode):</span>
+                      </label>
+                      <div class="selection-mode-toggle">
+                        <label class="radio-pill">
+                          <input type="radio" name="grainSelectMode" id="grainModeAuto" value="auto" checked onchange="app.onGrainModeChange('auto')">
+                          <span>🤖 मेन्यूनुसार आपोआप (Auto)</span>
+                        </label>
+                        <label class="radio-pill">
+                          <input type="radio" name="grainSelectMode" id="grainModeManual" value="manual" onchange="app.onGrainModeChange('manual')">
+                          <span>✋ डाळ/उसळ स्वतः निवडा (Select)</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Manual Grains Selection Box (Hidden in auto mode, shown in manual mode) -->
+                  <div id="manualGrainsSelectionBox" class="manual-grains-box card p-3 mt-1 mb-3" style="display: none; background: #f0fdf4; border: 1.5px solid #86efac;">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <label class="form-label font-bold" style="color: #166534; font-size: 0.9rem; margin: 0;">आजच्या आहारात वापरलेली डाळ / कडधान्य / धान्य टिक करा:</label>
+                      <button type="button" class="btn btn-sm btn-link" style="color: #15803d; font-weight: 700; padding: 0; text-decoration: underline;" onclick="app.openAddIngredientModal()">➕ नवीन धान्य जोडा</button>
+                    </div>
+                    <div class="grains-checkbox-grid" id="manualGrainsCheckboxGrid">
+                      <!-- Populated dynamically via JS -->
+                    </div>
+                    <small class="form-hint" style="color: #15803d; margin-top: 0.4rem; display: block;">हवी ती एक किंवा अधिक कडधान्ये / धान्ये निवडा. हिशोब लगेच उजव्या तक्त्यात अपडेट होईल.</small>
+                  </div>
+
+                  <!-- Beneficiaries Attendance Section with Quick Chips -->
+                  <div class="attendance-input-card p-3 mb-3" style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px;">
+                    <label for="entryChildren" class="form-label font-bold" style="color: #0f172a; font-size: 0.95rem;">
+                      <span>👥 उपस्थित लाभार्थी विद्यार्थी संख्या (Beneficiaries):</span>
+                      <span class="req">*</span>
+                    </label>
+                    
+                    <div class="input-with-stepper mb-2">
+                      <button type="button" class="btn-stepper" onclick="app.adjustChildren(-1)" title="1 कमी करा">-</button>
+                      <input type="number" id="entryChildren" class="form-control form-control-hero" min="0" max="500" value="8" required>
+                      <button type="button" class="btn-stepper" onclick="app.adjustChildren(1)" title="1 वाढवा">+</button>
+                    </div>
+
+                    <!-- 1-Click Quick Attendance Chips -->
+                    <div class="quick-att-chips-wrapper">
+                      <span class="quick-chips-title">⚡ 1-क्लिक हजेरी निवडा:</span>
+                      <div class="quick-chips-row" id="quickAttChipsContainer">
+                        <!-- Populated dynamically via JS -->
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group flex-1">
+                      <label for="entryFuelCost" class="form-label font-bold" style="color: #047857;">
+                        <span>💰 इंधन खर्च (Fuel Grant):</span>
+                      </label>
+                      <input type="number" step="0.01" id="entryFuelCost" class="form-control form-control-lg" readonly style="font-weight: 800; color: #047857; background: #ecfdf5; border-color: #a7f3d0;">
+                      <small class="form-hint" id="fuelRateHint">दर: रु. 1.51 प्रति विद्यार्थी</small>
+                    </div>
+
+                    <div class="form-group flex-1">
+                      <label for="entryRemarks" class="form-label font-bold" style="color: #334155;">
+                        <span>📝 शेरा (Remarks / ऐच्छिक):</span>
+                      </label>
+                      <input type="text" id="entryRemarks" class="form-control form-control-lg" placeholder="उदा. धान्य प्राप्त, विशेष मेन्यू...">
+                    </div>
+                  </div>
+
+                  <div class="form-actions mt-4">
+                    <button type="submit" class="btn btn-primary btn-hero" id="btnSaveDaily">
+                      <span>💾 आजची नोंद जतन करा (Save)</span>
+                    </button>
+                    <button type="button" class="btn btn-success" style="background: #16a34a; border-color: #15803d; font-weight: 700;" onclick="app.shareTodayEntryViaWhatsApp(document.getElementById('entryDate').value)">
+                      <span>📲 WhatsApp ने पाठवा</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="app.printDailySlip()">
+                      <span>🖨️ स्लिप प्रिंट</span>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="app.resetDailyForm()">
+                      <span>🔄 रीसेट</span>
+                    </button>
+                  </div>
+
+                </form>
+              </div>
+            </div>
+
+            <!-- Right Column: Auto Calculated Ingredient Table -->
+            <div class="card calculation-card">
+              <div class="card-header flex-between" style="background: linear-gradient(135deg, #f8fafc 0%, #f0fdf4 100%); border-bottom: 1.5px solid #bbf7d0;">
+                <div>
+                  <h3 class="card-title" style="color: #166534;">2. आवश्यक किराणा व थेट पाककृती प्रमाण</h3>
+                  <p class="card-subtitle" id="calcSubtitle">8 विद्यार्थ्यांसाठी आवश्यक प्रमाण</p>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                  <span class="badge badge-success">✨ स्वयंचलित हिशोब</span>
+                </div>
+              </div>
+              <div class="card-body p-0">
+                
+                <!-- Category Filter Pills -->
+                <div class="p-2 bg-light border-bottom d-flex gap-2 flex-wrap">
+                  <button type="button" class="btn btn-sm calc-filter-btn active" data-filter="all" onclick="app.filterCalcTable('all')">🔍 सर्व साहित्य</button>
+                  <button type="button" class="btn btn-sm calc-filter-btn" data-filter="grain" onclick="app.filterCalcTable('grain')">🍚 मुख्य धान्य व डाळ</button>
+                  <button type="button" class="btn btn-sm calc-filter-btn" data-filter="spice" onclick="app.filterCalcTable('spice')">🧂 मसाले व किराणा</button>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="table calc-table" id="calcTable">
+                    <thead>
+                      <tr>
+                        <th>घटक / धान्य</th>
+                        <th>प्रति विद्यार्थी</th>
+                        <th class="text-right">आवश्यक वजन</th>
+                        <th class="text-right">किचन माप</th>
+                        <th class="text-right">उपलब्ध साठा</th>
+                        <th class="text-center">स्थिती</th>
+                      </tr>
+                    </thead>
+                    <tbody id="calcTableBody">
+                      <!-- Dynamic Rows Injected by JS -->
+                    </tbody>
+                    <tfoot id="calcTableFoot">
+                      <tr>
+                        <th colspan="2">एकूण मुख्य धान्य (तांदूळ + डाळ/उसळ):</th>
+                        <th class="text-right" id="calcTotalGrainsKg">0.000 kg</th>
+                        <th class="text-right" id="calcTotalGrainsKitchen">0 kg</th>
+                        <th colspan="2"></th>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+              <div class="card-footer" style="background: #f8fafc; border-top: 1.5px solid #e2e8f0;">
+                <div class="quick-summary-chips">
+                  <div class="summary-chip">
+                    <span class="chip-label">🍚 तांदूळ:</span>
+                    <strong class="chip-val" id="chipRice">0.800 kg</strong>
+                  </div>
+                  <div class="summary-chip">
+                    <span class="chip-label">🥣 डाळ/उसळ:</span>
+                    <strong class="chip-val" id="chipPulse">0.160 kg</strong>
+                  </div>
+                  <div class="summary-chip">
+                    <span class="chip-label">🛢️ तेल:</span>
+                    <strong class="chip-val" id="chipOil">40 g / ml</strong>
+                  </div>
+                  <div class="summary-chip">
+                    <span class="chip-label">💰 इंधन अनुदान:</span>
+                    <strong class="chip-val" id="chipFuel">रु. 12.08</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Quick Recent Days Ribbon -->
+          <div class="recent-ribbon-card card mt-4">
+            <div class="card-header flex-between">
+              <h4 class="card-title-sm">चालू महिन्यातील अलीकडील नोंदी (Recent Entries)</h4>
+              <button class="btn btn-sm btn-link" onclick="app.switchTab('register')">सर्व नोंदी पहा (View All) →</button>
+            </div>
+            <div class="card-body p-2">
+              <div class="recent-days-grid" id="recentDaysGrid">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 2: DAILY REGISTER (दैनिक नोंदवही) -->
+      <section id="tab-register" class="tab-panel">
+        <div class="container-fluid">
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2 class="panel-title">दैनिक पोषण आहार नोंदवही (Daily Register)</h2>
+              <p class="panel-desc">महिन्यातील सर्व दिवसांच्या नोंदींचे संपूर्ण विवरण, संपादन व नियंत्रण</p>
+            </div>
+            <div class="panel-actions filter-actions">
+              <div class="filter-group">
+                <label for="registerMonthSelect" class="filter-label">महिना निवडा:</label>
+                <input type="month" id="registerMonthSelect" class="form-control" onchange="app.onRegisterMonthChange()">
+              </div>
+              <button class="btn btn-success" onclick="app.exportExcelCurrentMonth()">
+                <span>📥 चालू महिना Excel डाऊनलोड</span>
+              </button>
+              <button class="btn btn-outline-primary" onclick="app.printDailyRegister()">
+                <span>🖨️ नोंदवही प्रिंट (A4)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Month Summary Stats Cards -->
+          <div class="stats-cards-grid">
+            <div class="stat-card">
+              <div class="stat-icon">📅</div>
+              <div class="stat-data">
+                <span class="stat-label">कामाचे दिवस</span>
+                <strong class="stat-val" id="statWorkingDays">0</strong>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">🍲</div>
+              <div class="stat-data">
+                <span class="stat-label">एकूण वाटलेली ताटे</span>
+                <strong class="stat-val" id="statTotalPlates">0</strong>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">🍚</div>
+              <div class="stat-data">
+                <span class="stat-label">एकूण वापरलेला तांदूळ</span>
+                <strong class="stat-val" id="statTotalRice">0.00 kg</strong>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">🥣</div>
+              <div class="stat-data">
+                <span class="stat-label">एकूण डाळी व उसळ</span>
+                <strong class="stat-val" id="statTotalPulses">0.00 kg</strong>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">💰</div>
+              <div class="stat-data">
+                <span class="stat-label">एकूण इंधन भाजीपाला अनुदान</span>
+                <strong class="stat-val" id="statTotalFuel">रु. 0</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detailed Daily Records Table -->
+          <div class="card mt-3">
+            <div class="card-body p-0">
+              <div class="table-responsive register-table-container">
+                <table class="table table-bordered register-table" id="registerTable">
+                  <thead>
+                    <tr class="header-row-primary">
+                      <th rowspan="2">दिनांक</th>
+                      <th rowspan="2">वार</th>
+                      <th rowspan="2">कोड</th>
+                      <th rowspan="2">आजचा आहार</th>
+                      <th rowspan="2">लाभार्थी</th>
+                      <th rowspan="2">ताटे</th>
+                      <th rowspan="2">तांदूळ<br><small>(कि.ग्रॅ.)</small></th>
+                      <th colspan="10">डाळी व कडधान्ये (कि.ग्रॅ.)</th>
+                      <th colspan="7">मसाले व किराणा पदार्थ</th>
+                      <th rowspan="2">इंधन खर्च<br><small>(रु.)</small></th>
+                      <th rowspan="2">शेरा</th>
+                      <th rowspan="2" class="no-print">क्रिया</th>
+                    </tr>
+                    <tr class="header-row-secondary">
+                      <th>मुगडाळ</th>
+                      <th>तूरडाळ</th>
+                      <th>मसूरडाळ</th>
+                      <th>मटकी</th>
+                      <th>मूग</th>
+                      <th>चवळी</th>
+                      <th>हरभरा</th>
+                      <th>वाटाणा</th>
+                      <th>सोयावडी</th>
+                      <th>एकूण</th>
+                      <th>जिरे<br><small>(g)</small></th>
+                      <th>मोहरी<br><small>(g)</small></th>
+                      <th>हळद<br><small>(g)</small></th>
+                      <th>मिरची पावडर<br><small>(g)</small></th>
+                      <th>सोयाबीन तेल<br><small>(ml/g)</small></th>
+                      <th>मीठ<br><small>(g)</small></th>
+                      <th>कांदा-लसून मसाला<br><small>(g)</small></th>
+                    </tr>
+                  </thead>
+                  <tbody id="registerTableBody">
+                    <!-- Dynamic Month Rows -->
+                  </tbody>
+                  <tfoot id="registerTableFoot">
+                    <!-- Totals Row -->
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 3: MONTHLY EXCEL SHEET VIEW (मासिक अहवाल - हुबेहूब मूळ एक्सेल फॉरमॅट) -->
+      <section id="tab-monthly" class="tab-panel">
+        <div class="container-fluid">
+          
+          <div class="panel-header no-print">
+            <div class="panel-title-group">
+              <h2 class="panel-title">शालेय पोषण आहार मासिक अहवाल (Original Excel Structure)</h2>
+              <p class="panel-desc">शाळेच्या मूळ एक्सेल फाईलप्रमाणे (Sheet: 1 to 5) संपूर्ण 31 दिवसांचे विवरण, मागील शिल्लक, प्राप्त व अखेर शिल्लक तक्ता</p>
+            </div>
+            <div class="panel-actions">
+              <input type="month" id="monthlyExcelPicker" class="form-control" onchange="app.onMonthlyExcelChange()">
+              <button class="btn btn-outline-primary" onclick="app.openYearlyFromMonthly()">
+                <span>📅 या वर्षाचा वार्षिक अहवाल (Yearly Report)</span>
+              </button>
+              <button class="btn btn-success" onclick="app.exportExcelCurrentMonth()">
+                <span>📊 मूळ फॉरमॅट Excel डाऊनलोड (.xlsx)</span>
+              </button>
+              <button class="btn btn-primary" onclick="app.printMonthlyReport()">
+                <span>🖨️ A4 Landscape प्रिंट</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Printable Excel Sheet Simulation Card -->
+          <div class="card excel-sheet-card" id="printableExcelSheet">
+            <div class="excel-sheet-header">
+              <h2 class="excel-title" id="excelHeaderTitle">शालेय पोषण आहार सन 2018-19 इ. 1 ली ते 5 वी</h2>
+              <div class="excel-school-row">
+                <div><strong>शाळेचे नांव :</strong> <span id="exSchoolName">रा .जि. प.उच्च प्राथमिक शाळा मेंगाळवाडी</span></div>
+                <div><strong>केंद्र :</strong> <span id="exCentre">खांडस</span></div>
+                <div><strong>तालुका :</strong> <span id="exTaluka">कर्जत</span></div>
+                <div><strong>जिल्हा :</strong> <span id="exDistrict">रायगड</span></div>
+                <div><strong>महिना :</strong> <span id="exMonthText">डिसेंबर 2019</span></div>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-bordered official-excel-table" id="officialExcelTable">
+                <thead>
+                  <tr>
+                    <th rowspan="2">दिनांक</th>
+                    <th rowspan="2">वार</th>
+                    <th rowspan="2">वार कोड</th>
+                    <th rowspan="2">आजचा आहार</th>
+                    <th rowspan="2">लाभार्थी ↓</th>
+                    <th rowspan="2">ताटांची संख्या</th>
+                    <th rowspan="2">तांदूळ</th>
+                    <th rowspan="2">मुगडाळ</th>
+                    <th rowspan="2">तूरडाळ</th>
+                    <th rowspan="2">मसूरडाळ</th>
+                    <th rowspan="2">मटकी</th>
+                    <th rowspan="2">मूग</th>
+                    <th rowspan="2">चवळी</th>
+                    <th rowspan="2">हरभरा</th>
+                    <th rowspan="2">वाटाणा</th>
+                    <th colspan="4">मसाल्याचे पदार्थ (ग्रॅममध्ये)</th>
+                    <th rowspan="2">सोयाबीन तेल</th>
+                    <th rowspan="2">मीठ</th>
+                    <th rowspan="2">कांदा-लसून मसाला</th>
+                    <th rowspan="2">सोयावडी</th>
+                    <th rowspan="2">इंधन खर्च</th>
+                    <th rowspan="2">शेरा</th>
+                  </tr>
+                  <tr>
+                    <th>जिरे</th>
+                    <th>मोहरी</th>
+                    <th>हळद</th>
+                    <th>मिरची पावडर</th>
+                  </tr>
+                  <tr class="rate-row" id="officialExcelRateRow">
+                    <th colspan="4" class="text-right">प्रमाण</th>
+                    <th></th>
+                    <th></th>
+                    <th id="exRate_rice">0.10</th>
+                    <th id="exRate_moong_dal">0.02</th>
+                    <th id="exRate_tur_dal">0.02</th>
+                    <th id="exRate_masoor_dal">0.02</th>
+                    <th id="exRate_matki">0.02</th>
+                    <th id="exRate_moong">0.02</th>
+                    <th id="exRate_chavali">0.02</th>
+                    <th id="exRate_chana">0.02</th>
+                    <th id="exRate_vatana">0.02</th>
+                    <th id="exRate_cumin">0.00020</th>
+                    <th id="exRate_mustard">0.00015</th>
+                    <th id="exRate_turmeric">0.00015</th>
+                    <th id="exRate_chilli">0.00300</th>
+                    <th id="exRate_oil">0.00500</th>
+                    <th id="exRate_salt">0.00070</th>
+                    <th id="exRate_masala">0.00090</th>
+                    <th id="exRate_soyavadi">0.02</th>
+                    <th id="exRateFuel">1.51</th>
+                    <th></th>
+                  </tr>
+                  <tr class="col-num-row">
+                    <th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th><th>12</th><th>13</th><th>14</th><th>15</th><th>16</th><th>17</th><th>18</th><th>19</th><th>20</th><th>21</th><th>22</th><th>23</th><th>24</th><th>25</th>
+                  </tr>
+                </thead>
+                <tbody id="officialExcelTableBody">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Footer Signatures & Summary -->
+            <div class="excel-sheet-footer">
+              <div class="footer-stats-row">
+                <div><strong>महिन्यातील ताटांची संख्या :</strong> <span id="exFooterPlates">190</span></div>
+                <div><strong>शालेय कामकाजाचे दिवस :</strong> <span id="exFooterWorkingDays">20</span></div>
+                <div><strong>पट :</strong> <span id="exFooterPat">9</span></div>
+              </div>
+              <div class="footer-sign-row">
+                <div class="sign-box">
+                  <br><br>
+                  <p><strong>सचिव / मुख्याध्यापक</strong><br>शाळा व्यवस्थापन समिती</p>
+                </div>
+                <div class="sign-box">
+                  <br><br>
+                  <p><strong>अध्यक्ष</strong><br>शाळा व्यवस्थापन समिती</p>
+                </div>
+                <div class="sign-box">
+                  <br><br>
+                  <p><strong>केंद्रप्रमुख</strong><br>केंद्र: <span id="exSignCentre">खांडस</span></p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 4: FORM B / प्रपत्र ब (इ. 1 ते 5) -->
+      <section id="tab-formb" class="tab-panel">
+        <div class="container">
+          
+          <div class="panel-header no-print">
+            <div class="panel-title-group">
+              <h2 class="panel-title">शालेय पोषण आहार योजना - प्रपत्र ब (इ. 1 ते 5)</h2>
+              <p class="panel-desc">शाळेने केंद्रप्रमुखांना दरमहा 1 तारखेपर्यंत द्यायचा अधिकृत अहवाल (2 प्रतीत)</p>
+            </div>
+            <div class="panel-actions">
+              <input type="month" id="formbMonthPicker" class="form-control" onchange="app.onFormBMonthChange()">
+              <button class="btn btn-outline-secondary" onclick="app.resetFormBDemandToDefault()" title="मागणी 20 दिवसांच्या नियमानुसार पूर्ववत करा">
+                <span>🔄 20 दिवस मागणी पूर्ववत</span>
+              </button>
+              <button class="btn btn-outline-warning" onclick="app.openAddDamagedStockModal()" title="या महिन्यासाठी खराब / नासाडी धान्य नोंदवा">
+                <span>⚠️ खराब धान्य नोंदवा</span>
+              </button>
+              <button class="btn btn-primary" onclick="app.printFormB()">
+                <span>🖨️ प्रपत्र ब प्रिंट (A4 Portrait / एका पानावर)</span>
+              </button>
+              <button class="btn btn-success" onclick="app.exportFormBExcel()">
+                <span>📥 प्रपत्र ब Excel डाऊनलोड</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Printable Form B Document Card (Perfect 1 A4 Size Vertical Fit) -->
+          <div class="card formb-card" id="printableFormB">
+            <div class="formb-header text-center">
+              <h3 class="formb-main-title">शालेय पोषण आहार योजना - प्रपत्र ब (इ. 1 ते 5)</h3>
+              <p class="formb-sub">शाळेने केंद्रप्रमुखांना दरमहा 1 तारखेपर्यंत द्यायचा अहवाल (2 प्रतीत)</p>
+              <div class="formb-school-info">
+                <strong>शाळेचे नांव :</strong> <span id="fbSchoolName">रा.जि.प. प्राथमिक शाळा मेंगाळवाडी</span>, 
+                <strong>केंद्र :</strong> <span id="fbCentre">खांडस</span>, 
+                <strong>ता.</strong> <span id="fbTaluka">कर्जत</span>, 
+                <strong>जि.</strong> <span id="fbDistrict">रायगड</span>
+              </div>
+            </div>
+
+            <!-- Top Summary Grid of Form B -->
+            <div class="formb-meta-grid">
+              <div class="meta-item">
+                <span class="meta-lbl">महिना व वर्ष:</span>
+                <strong class="meta-val" id="fbMonthYear">डिसेंबर 2019</strong>
+              </div>
+              <div class="meta-item">
+                <span class="meta-lbl">पटसंख्या:</span>
+                <strong class="meta-val" id="fbPat">9</strong>
+              </div>
+              <div class="meta-item">
+                <span class="meta-lbl">उपस्थित विद्यार्थी (ताटे):</span>
+                <strong class="meta-val" id="fbTotalPlates">190</strong>
+              </div>
+              <div class="meta-item">
+                <span class="meta-lbl">एकूण कार्यदिवस:</span>
+                <strong class="meta-val" id="fbWorkingDays">20</strong>
+              </div>
+              <div class="meta-item">
+                <span class="meta-lbl">अन्न शिजवून दिलेले दिवस:</span>
+                <strong class="meta-val" id="fbMealDays">20</strong>
+              </div>
+              <div class="meta-item meta-item-receipt">
+                <span class="meta-lbl">धान्य प्राप्त दिनांक व पावती क्र.:</span>
+                <strong class="meta-val" id="fbReceiptDate">—</strong>
+              </div>
+            </div>
+
+            <!-- Form B Ingredients Table -->
+            <div class="table-responsive mt-3">
+              <table class="table table-bordered formb-table" id="formbTable">
+                <thead>
+                  <tr class="header-row-primary">
+                    <th style="width: 42px;">अ.क्र.</th>
+                    <th style="min-width: 130px;">वस्तूचे नांव</th>
+                    <th class="fb-col-opening" style="background: #fef9c3; color: #854d0e;">मागील शिल्लक<br><small>(कि.ग्रॅ.)</small></th>
+                    <th class="fb-col-received" style="background: #d1fae5; color: #065f46;">चालू महिन्यात प्राप्त<br><small>(कि.ग्रॅ.)</small></th>
+                    <th class="fb-col-total" style="background: #e0f2fe; color: #0369a1;">एकूण प्राप्त (3+4)<br><small>(कि.ग्रॅ.)</small></th>
+                    <th class="fb-col-consumed" style="background: #e0e7ff; color: #3730a3;">अन्न शिजवण्यासाठी वापरलेल्या वस्तू (कि.ग्रॅ.)</th>
+                    <th class="fb-col-closing" style="background: #fef08a; color: #854d0e; font-weight: 800;">शिल्लक वस्तू (5-6)<br><small>(कि.ग्रॅ.)</small></th>
+                    <th class="fb-col-demand" style="background: #ede9fe; color: #5b21b6; min-width: 110px;">
+                      पुढील महिन्यासाठी मागणी<br><small>(कि.ग्रॅ.)</small>
+                    </th>
+                    <th style="width: 80px;">शेरा</th>
+                  </tr>
+                  <tr class="col-num-row">
+                    <th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th>
+                  </tr>
+                </thead>
+                <tbody id="formbTableBody">
+                  <!-- Injected by JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <div class="formb-notes">
+              <div id="fbDamagedNoteBox" style="display: none; padding: 4px 8px; margin: 3px 0; background: #fffbeb; border: 1pt dashed #d97706; border-radius: 4px; font-size: 8pt; color: #92400e;"></div>
+              <p class="note-line">* मागणी नोंदवताना शाळेकडे वीस दिवसांचा साठा शिल्लक राहील याची दक्षता घेऊन मागणी नोंदवावी. आवश्यकतेपेक्षा जास्त साठा करून धान्य खराब होणार नाही याची दक्षता घ्यावी.</p>
+              
+              <div class="subsidy-calc-box">
+                <p><strong>1) महिन्यातील एकूण ताटांची संख्या :</strong> <span id="fbFootPlates">190</span></p>
+                <p><strong>2) इंधन व भाजीपाल्यासाठी खर्च केलेले अनुदान रु. :</strong> =<span id="fbFuelTotal">305</span>/- (ताटांची संख्या <span id="fbCalcPlates">190</span> X दर <span id="fbFuelRate">1.61</span>/-) (शासनस्तरावरून निश्चित केल्यानुसार)</p>
+                <p><strong>3) स्वयंपाकी तथा मदतनीस मानधन रु. :</strong> =<span id="fbCookHonorarium">2500</span>/- (रु. <span id="fbCookRate">2500</span> X नेमलेले स्वयंपाकी तथा मदतनीस संख्या: <span id="fbCookCount">1</span>)</p>
+              </div>
+
+              <p class="cert-text">प्रमाणित करण्यात येते की, वर नमूद केलेली माहिती दैनंदिन नोंदवहीवरून घेतलेली आहे. ती तपासली आहे व बरोबर आहे.</p>
+            </div>
+
+            <div class="formb-signatures">
+              <div class="sign-block">
+                <p>दिनांक: <span id="fbReportDate"></span></p>
+              </div>
+              <div class="sign-block text-center">
+                <br><br>
+                <p><strong>मुख्याध्यापक / सचिव</strong><br>शाळा व्यवस्थापन समिती <span id="fbSignSchool">मेंगाळवाडी</span></p>
+              </div>
+              <div class="sign-block text-center">
+                <br><br>
+                <p><strong>केंद्रप्रमुख</strong><br>केंद्र: <span id="fbSignCentre2">खांडस</span></p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 4.5: YEARLY REPORT (वार्षिक अहवाल: 1 एप्रिल ते 31 मार्च) -->
+      <section id="tab-yearly" class="tab-panel">
+        <div class="container-fluid">
+          
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2 class="panel-title">📅 वार्षिक अहवाल व उपयोगिता प्रमाणपत्र (Annual Report)</h2>
+              <p class="panel-desc">माहे 1 एप्रिल ते 31 मार्च या वर्षाचा संपूर्ण 12 महिन्यांचा गोषवारा, धान्य ताळेबंद व खर्चाचे विवरण</p>
+            </div>
+            <div class="panel-actions">
+              <div class="d-flex align-center gap-2">
+                <label for="yearlyYearSelect" class="form-label mb-0" style="font-weight:700; white-space:nowrap;">वर्ष निवडा:</label>
+                <select id="yearlyYearSelect" class="form-control" style="width: auto; font-weight: 700; background: #eff6ff; color: #1e40af; border-color: #93c5fd;" onchange="app.onYearlyYearChange()">
+                  <option value="2026-2027">2026-27 (2026-27)</option>
+                  <option value="2025-2026">2025-26 (2025-26)</option>
+                  <option value="2024-2025" selected>2024-25 (2024-25)</option>
+                  <option value="2023-2024">2023-24 (2023-24)</option>
+                  <option value="2022-2023">2022-23 (2022-23)</option>
+                  <option value="2021-2022">2021-22 (2021-22)</option>
+                  <option value="2020-2021">2020-21 (2020-21)</option>
+                  <option value="2019-2020">2019-20 (2019-20)</option>
+                  <option value="2018-2019">2018-19 (2018-19)</option>
+                  <option value="2017-2018">2017-18 (2017-18)</option>
+                </select>
+              </div>
+              <button class="btn btn-primary" onclick="app.printYearlyReport()">
+                <span>🖨️ वार्षिक अहवाल प्रिंट (Legal Landscape / एका पानावर)</span>
+              </button>
+              <button class="btn btn-success" onclick="app.exportYearlyExcel()">
+                <span>📥 वार्षिक अहवाल Excel (.xlsx)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Document Sheet Card -->
+          <div class="card yearly-sheet-card" id="yearlyReportPrintArea">
+            
+            <div class="text-center mb-3">
+              <h3 class="excel-title" style="margin-bottom: 0.25rem;">शालेय पोषण आहार योजना (<span id="yrYearTitle">सन 2024-25</span>)</h3>
+              <p style="font-size: 0.95rem; font-weight: 700; color: #334155; margin-bottom: 0.25rem;">
+                पंचायत समिती <span id="yrTaluka">कर्जत</span>, जि. <span id="yrDistrict">रायगड</span>
+              </p>
+              <h4 style="font-size: 1.05rem; font-weight: 800; color: #1e3a8a; margin-bottom: 0.5rem;">
+                तांदूळ व धान्यादी मालाचे उपयोगिता प्रमाणपत्र (माहे 1 एप्रिल ते 31 मार्च)
+              </h4>
+            </div>
+
+            <div class="excel-school-row">
+              <div><strong>शाळेचे नांव:</strong> <span id="yrSchoolName">जि. प. शाळा मेंगाळवाडी</span></div>
+              <div><strong>केंद्र:</strong> <span id="yrCentre">खांडस</span></div>
+              <div><strong>U-DISE:</strong> <span id="yrUdise">27240306601</span></div>
+              <div><strong>वर्ग:</strong> <span>इ. 1 ते 5</span></div>
+            </div>
+
+            <!-- Quick Scroll Helper Bar for Yearly Matrix -->
+            <div class="no-print d-flex justify-content-between align-center mb-2 px-2 py-1" style="background: #f1f5f9; border-radius: 6px; font-size: 0.82rem;">
+              <span style="color: #475569; font-weight: 600;">👉 सर्व 12 महिने पाहण्यासाठी आडवे स्क्रोल (Horizontal Scroll) करा किंवा खालील बटणे वापरा:</span>
+              <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('yearlyTableWrapper').scrollTo({left: 0, behavior: 'smooth'})">⏮️ सुरुवातीला</button>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('yearlyTableWrapper').scrollTo({left: 450, behavior: 'smooth'})">📅 एप्रिल-सप्टें.</button>
+                <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('yearlyTableWrapper').scrollTo({left: 1050, behavior: 'smooth'})">📅 ऑक्टो-मार्च</button>
+                <button type="button" class="btn btn-outline-success btn-sm" onclick="document.getElementById('yearlyTableWrapper').scrollTo({left: 2000, behavior: 'smooth'})">📊 वार्षिक एकूण ⏩</button>
+              </div>
+            </div>
+
+            <div class="yearly-table-wrapper" id="yearlyTableWrapper">
+              <table class="yearly-table" id="yearlyReportTable">
+                <thead>
+                  <tr>
+                    <th rowspan="2" class="sticky-col" style="width: 32px;">अ.<br>क्र.</th>
+                    <th rowspan="2" class="sticky-col-2" style="min-width: 140px;">वस्तूचे नांव</th>
+                    <th rowspan="2" style="min-width: 75px; background: #fef9c3; color: #854d0e;">मागील<br>शिल्लक<br>(1 एप्रिल)</th>
+                    <th colspan="3" class="month-header">एप्रिल</th>
+                    <th colspan="3" class="month-header">मे</th>
+                    <th colspan="3" class="month-header">जून</th>
+                    <th colspan="3" class="month-header">जुलै</th>
+                    <th colspan="3" class="month-header">ऑगस्ट</th>
+                    <th colspan="3" class="month-header">सप्टेंबर</th>
+                    <th colspan="3" class="month-header">ऑक्टोबर</th>
+                    <th colspan="3" class="month-header">नोव्हेंबर</th>
+                    <th colspan="3" class="month-header">डिसेंबर</th>
+                    <th colspan="3" class="month-header">जानेवारी</th>
+                    <th colspan="3" class="month-header">फेब्रुवारी</th>
+                    <th colspan="3" class="month-header">मार्च</th>
+                    <th colspan="3" class="total-header">वार्षिक एकूण (Yearly Total)</th>
+                  </tr>
+                  <tr>
+                    <!-- 12 Months Sub-headers -->
+                    <th>प्राप्त</th><th>शिज.</th><th>शिल्लक</th>
+                    <th>प्राप्त</th><th>शिज.</th><th>शिल्लक</th>
+                    <th>प्राप्त</th><th>शिज.</th><th>शिल्लक</th>
+                    <th>प्राप्त</th><th>शिज.</th><th>शिल्लक</th>
+                    <th>प्राप्त</th><th>शिज.</th><th>शिल्लक</th>
+                    <th>प्राप्त</th><th>शिज.</th><th>शिल्लक</th>
+                    <th>प्राप्त</th><th>शिज.</th><th>शिल्लक</th>
+                    <th>प्राप्त</th><th>शिज.</th><th>शिल्लक</th>
+                    <th>प्राप्त</th><th>शिज.</th><th>शिल्लक</th>
+                    <th>प्राप्त</th><th>शिज.</th><th>शिल्लक</th>
+                    <th>प्राप्त</th><th>शिज.</th><th>शिल्लक</th>
+                    <th>प्राप्त</th><th>शिज.</th><th>शिल्लक</th>
+                    <!-- Annual Total Sub-headers -->
+                    <th style="background: #fef08a;">एकूण प्राप्त</th>
+                    <th style="background: #fef08a;">एकूण शिज.</th>
+                    <th style="background: #fef08a;">अखेर शिल्लक</th>
+                  </tr>
+                </thead>
+                <tbody id="yearlyReportTableBody">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Footer Signatures -->
+            <div class="footer-sign-row mt-4">
+              <div class="sign-box">
+                <p>दिनांक: <span id="yrCurrentDate"></span></p>
+                <br><br>
+                <p><strong>मुख्याध्यापक / सचिव</strong><br>शाळा व्यवस्थापन समिती</p>
+              </div>
+              <div class="sign-box">
+                <br><br><br>
+                <p><strong>अध्यक्ष</strong><br>शाळा व्यवस्थापन समिती</p>
+              </div>
+              <div class="sign-box">
+                <br><br><br>
+                <p><strong>केंद्रप्रमुख / गटशिक्षणाधिकारी</strong><br>पंचायत समिती <span id="yrSignTaluka">कर्जत</span></p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB: TASTE REGISTER (पोषण आहार चव नोंदवही) -->
+      <section id="tab-taste" class="tab-panel">
+        <div class="container">
+          
+          <div class="panel-header no-print">
+            <div class="panel-title-group">
+              <h2 class="panel-title">🍽️ पोषण आहार चव नोंदवही (Taste Register)</h2>
+              <p class="panel-desc">PM POSHAN अंतर्गत दररोज विद्यार्थ्यांना अन्न वाटण्यापूर्वी शिक्षक / SMC सदस्यांनी घेतलेल्या चव तपासणीची अधिकृत नोंदवही</p>
+            </div>
+            <div class="panel-actions">
+              <button class="btn btn-primary" onclick="app.openTasteModal()">
+                <span>➕ आजची चव नोंदवा</span>
+              </button>
+              <button class="btn btn-success" onclick="app.exportTasteRegisterExcel()">
+                <span>📥 Excel डाऊनलोड</span>
+              </button>
+              <button class="btn btn-dark" onclick="app.printTasteRegister()">
+                <span>🖨️ चव नोंदवही प्रिंट (A4)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Controls Bar -->
+          <div class="card mb-4 no-print">
+            <div class="card-body">
+              <div class="row align-items-center g-3">
+                <div class="col-md-4">
+                  <label class="form-label" for="tasteMonthSelect"><strong>📅 महिना निवडा:</strong></label>
+                  <select class="form-select" id="tasteMonthSelect" onchange="app.onTasteMonthChange()">
+                    <!-- Populated dynamically -->
+                  </select>
+                </div>
+                <div class="col-md-5">
+                  <label class="form-label"><strong>⚡ जलद कृती (Quick Actions):</strong></label>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="app.autoFillMonthTasteRecords()" title="या महिन्यातील सर्व कामकाजाच्या दिवसांसाठी स्वयंचलित चव नोंदी तयार करा">
+                      <span>🔄 महिन्याच्या सर्व नोंदी स्वयंचलित भरा</span>
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="app.refreshTasteRegister()">
+                      <span>🔄 रीफ्रेश</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-3 text-end">
+                  <span class="badge bg-light text-dark p-2 border" id="tasteMonthStatsBadge">
+                    कामाचे दिवस: 0 | चव तपासणी: 0
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Printable Taste Register Sheet -->
+          <div class="taste-printable-sheet" id="tastePrintableArea">
+            
+            <!-- School Header for Print -->
+            <div class="taste-school-header">
+              <div class="school-gov-title">महाराष्ट्र शासन — शालेय शिक्षण व क्रीडा विभाग</div>
+              <h1 class="school-main-name" id="tasteSchoolName">शाळेचे नाव</h1>
+              <div class="school-sub-details">
+                <span><strong>यु-डायस क्र.:</strong> <span id="tasteSchoolUdise">—</span></span> | 
+                <span><strong>केंद्र:</strong> <span id="tasteSchoolKendra">—</span></span> | 
+                <span><strong>तालुका:</strong> <span id="tasteSchoolTaluka">—</span></span> | 
+                <span><strong>जिल्हा:</strong> <span id="tasteSchoolDist">—</span></span>
+              </div>
+              <div class="taste-register-title">
+                प्रधानमंत्री पोषण शक्ती निर्माण योजना (PM POSHAN) — दैनिक भोजन चव तपासणी नोंदवही
+              </div>
+              <div class="taste-period-badge">
+                <strong>माहे:</strong> <span id="tasteRegisterMonthText">—</span>
+              </div>
+            </div>
+
+            <!-- Taste Register Table -->
+            <div class="table-responsive">
+              <table class="table table-bordered taste-register-table" id="tasteRegisterTable">
+                <thead>
+                  <tr class="table-header-row">
+                    <th style="width: 4%;">अ. क्र.</th>
+                    <th style="width: 14%;">दिनांक व वार</th>
+                    <th style="width: 13%;">तयार केलेला आहार</th>
+                    <th style="width: 8%;">वेळ</th>
+                    <th style="width: 17%;">चव घेणाऱ्याचे नाव व पद</th>
+                    <th style="width: 9%;">दर्जा</th>
+                    <th style="width: 13%;">चव अभिप्राय</th>
+                    <th style="width: 16%;">स्वाक्षरी</th>
+                    <th style="width: 6%;" class="no-print">कृती</th>
+                  </tr>
+                </thead>
+                <tbody id="tasteRegisterTableBody">
+                  <!-- Dynamically populated rows -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Signature Footer for Print -->
+            <div class="taste-signatures-row">
+              <div class="taste-sign-col">
+                <div class="sign-space"></div>
+                <strong>स्वयंपाकी / मदतनीस</strong><br>
+                <span>तयार करणारा</span>
+              </div>
+              <div class="taste-sign-col">
+                <div class="sign-space"></div>
+                <strong>चव तपासणी प्रतिनिधी</strong><br>
+                <span>शिक्षक / माता पालक गट</span>
+              </div>
+              <div class="taste-sign-col">
+                <div class="sign-space"></div>
+                <strong>अध्यक्ष / सदस्य</strong><br>
+                <span>शाळा व्यवस्थापन समिती (SMC)</span>
+              </div>
+              <div class="taste-sign-col">
+                <div class="sign-space"></div>
+                <strong>मुख्याध्यापक</strong><br>
+                <span id="tasteSignSchoolName">शाळेचे नाव</span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- Taste Entry / Edit Modal -->
+      <div class="modal-backdrop-custom" id="tasteModal" style="display: none;">
+        <div class="modal-dialog-custom modal-lg">
+          <div class="modal-content-custom">
+            <div class="modal-header-custom">
+              <h3 class="modal-title-custom" id="tasteModalTitle">🍽️ दैनिक आहार चव तपासणी नोंद</h3>
+              <button type="button" class="btn-close-custom" onclick="app.closeTasteModal()">✕</button>
+            </div>
+            <div class="modal-body-custom">
+              <form id="tasteEntryForm" onsubmit="event.preventDefault(); app.saveTasteEntryFromForm();">
+                
+                <div class="row g-3 mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label" for="tasteFormDate"><strong>दिनांक:</strong></label>
+                    <input type="date" class="form-control" id="tasteFormDate" onchange="app.onTasteFormDateChange()" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label" for="tasteFormTime"><strong>चव घेतल्याची वेळ:</strong></label>
+                    <input type="text" class="form-control" id="tasteFormTime" value="12:00 PM" placeholder="उदा. 12:00 PM" required>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label" for="tasteFormMenu"><strong>तयार केलेला आहार (मेन्यू):</strong></label>
+                    <input type="text" class="form-control" id="tasteFormMenu" placeholder="मेन्यू नाव" required>
+                  </div>
+                </div>
+
+                <div class="row g-3 mb-3">
+                  <div class="col-md-5">
+                    <label class="form-label" for="tasteFormTesterSelect"><strong>चव घेणारे (पद व व्यक्ती निवडा):</strong></label>
+                    <select class="form-select" id="tasteFormTesterSelect" onchange="app.onTasteTesterSelectChange()">
+                      <option value="headmaster" selected>मुख्याध्यापक (Headmaster)</option>
+                      <option value="assistantTeacher">सहशिक्षक (Assistant Teacher)</option>
+                      <option value="president">SMC अध्यक्ष (SMC President)</option>
+                      <option value="cook">स्वयंपाकी / मदतनीस (Cook)</option>
+                      <option value="manual">इतर (मॅन्युअली नवीन नाव टाका / Manual Add)</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label" for="tasteFormTesterName"><strong>चव घेणाऱ्याचे नाव:</strong></label>
+                    <input type="text" class="form-control" id="tasteFormTesterName" placeholder="श्री. / श्रीमती..." required>
+                    <input type="hidden" id="tasteFormTesterRole" value="मुख्याध्यापक">
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label" for="tasteFormQuality"><strong>आहाराचा दर्जा:</strong></label>
+                    <select class="form-select" id="tasteFormQuality">
+                      <option value="उत्कृष्ट" selected>उत्कृष्ट (Excellent)</option>
+                      <option value="उत्तम">उत्तम (Very Good)</option>
+                      <option value="चांगला">चांगला (Good)</option>
+                      <option value="समाधानकारक">समाधानकारक (Satisfactory)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label" for="tasteFormRemarkSelect"><strong>संक्षिप्त अभिप्राय निवडा (Short Remark):</strong></label>
+                  <select class="form-select mb-2" id="tasteFormRemarkSelect" onchange="app.onTasteRemarkSelectChange()">
+                    <option value="" disabled selected>-- अभिप्राय निवडा --</option>
+                    <option value="उत्तम">उत्तम</option>
+                    <option value="चविष्ट">चविष्ट</option>
+                    <option value="चांगली">चांगली</option>
+                    <option value="आळणी">आळणी</option>
+                    <option value="manual">इतर (मॅन्युअली संक्षिप्त शेरा लिहा)</option>
+                  </select>
+                  <div class="taste-chips-container mb-2">
+                    <button type="button" class="taste-chip positive" onclick="app.setQuickRemark('उत्तम')">
+                      🌟 उत्तम
+                    </button>
+                    <button type="button" class="taste-chip positive" onclick="app.setQuickRemark('चविष्ट')">
+                      😋 चविष्ट
+                    </button>
+                    <button type="button" class="taste-chip positive" onclick="app.setQuickRemark('चांगली')">
+                      👍 चांगली
+                    </button>
+                    <button type="button" class="taste-chip positive" onclick="app.setQuickRemark('पौष्टिक')">
+                      🥗 पौष्टिक
+                    </button>
+                    <button type="button" class="taste-chip positive" onclick="app.setQuickRemark('दर्जेदार')">
+                      🥣 दर्जेदार
+                    </button>
+                    <button type="button" class="taste-chip corrective" onclick="app.setQuickRemark('आळणी')">
+                      ⚠️ आळणी
+                    </button>
+                    <button type="button" class="taste-chip corrective" onclick="app.setQuickRemark('कमी तिखट')">
+                      ⚠️ कमी तिखट
+                    </button>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label" for="tasteFormRemark"><strong>चव अभिप्राय (संक्षिप्त शेरा):</strong></label>
+                  <input type="text" class="form-control" id="tasteFormRemark" placeholder="संक्षिप्त शेरा (उदा. उत्तम, चविष्ट, चांगली)" required>
+                </div>
+
+                <div class="modal-footer-custom">
+                  <button type="button" class="btn btn-secondary" onclick="app.closeTasteModal()">रद्द करा</button>
+                  <button type="submit" class="btn btn-primary">💾 चव नोंद जतन करा</button>
+                </div>
+
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: STOCK MANAGEMENT (साठा व्यवस्थापन) -->
+      <section id="tab-stock" class="tab-panel">
+        <div class="container">
+          
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2 class="panel-title">धान्य व किराणा साठा व्यवस्थापन (Stock Management)</h2>
+              <p class="panel-desc">धान्य प्राप्त नोंद (Receipts), मागील शिल्लक, चालू वापर आणि शिल्लक साठ्याचे नियंत्रण</p>
+            </div>
+            <div class="panel-actions">
+              <button class="btn btn-outline-primary" onclick="app.openEditOldStockModal()">
+                <span>✏️ मागील शिल्लक बदला (Edit Old Stock)</span>
+              </button>
+              <button class="btn btn-warning" onclick="app.openAddDamagedStockModal()" style="font-weight: 700;">
+                <span>⚠️ खराब / नासाडी धान्य नोंद (Damaged / Expired Stock)</span>
+              </button>
+              <button class="btn btn-primary" onclick="app.openAddStockModal()">
+                <span>➕ नवीन धान्य प्राप्त नोंद (Add Received Stock)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Opening Stock Quick Edit Banner -->
+          <div class="card mb-3 opening-stock-banner-card">
+            <div class="card-body flex-between flex-wrap gap-2">
+              <div>
+                <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 0.2rem;">📦 सुरुवातीची मागील शिल्लक (Opening / Old Stock)</h4>
+                <p class="form-hint" style="margin: 0;">शाळेचा मूळ सुरुवातीचा साठा तपासण्यासाठी व बदलण्यासाठी पुढील बटण वापरा.</p>
+              </div>
+              <button class="btn btn-sm btn-outline-primary" onclick="app.openEditOldStockModal()">
+                <span>✏️ मागील शिल्लक संपादित करा (Edit)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Current Stock Grid Overview -->
+          <div class="stock-cards-grid" id="stockCardsGrid">
+            <!-- Injected via JS -->
+          </div>
+
+          <!-- Stock Receipts History -->
+          <div class="card mt-4">
+            <div class="card-header flex-between">
+              <h3 class="card-title">प्राप्त धान्याच्या नोंदींचा इतिहास (Stock Receipt History)</h3>
+              <span class="badge badge-info" id="receiptCountBadge">0 नोंदी</span>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>पावती / नोंद दिनांक</th>
+                      <th>पावती / चलन क्र.</th>
+                      <th>तपशील / धान्य प्रकार व प्रमाण</th>
+                      <th>नोंदवणार</th>
+                      <th class="no-print text-center">क्रिया</th>
+                    </tr>
+                  </thead>
+                  <tbody id="stockReceiptsTableBody">
+                    <!-- Dynamic Rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Damaged / Expired Stock History -->
+          <div class="card mt-4" style="border-left: 4px solid #f59e0b;">
+            <div class="card-header flex-between" style="background: #fffbeb;">
+              <div>
+                <h3 class="card-title" style="color: #92400e;">⚠️ खराब / मुदत संपलेले / नासाडी धान्य नोंदी (Damaged & Expired Stock Log)</h3>
+                <p class="form-hint mb-0" style="color: #b45309; font-size: 0.8rem;">खराब झालेले धान्य संबंधित महिन्यातील एकूण वापर / शिजवलेल्या धान्यात आपोआप समाविष्ट केले जाते.</p>
+              </div>
+              <span class="badge badge-warning" id="damagedCountBadge">0 नोंदी</span>
+            </div>
+            <div class="card-body p-0">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>नोंद दिनांक</th>
+                      <th>कारण / पंचनामा क्र. / शेरा</th>
+                      <th>खराब झालेले धान्य व प्रमाण (कि.ग्रॅ.)</th>
+                      <th>नोंदवणार</th>
+                      <th class="no-print text-center">क्रिया</th>
+                    </tr>
+                  </thead>
+                  <tbody id="damagedStockTableBody">
+                    <!-- Dynamic Rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 6: EXCEL IMPORT / EXPORT (आयात / निर्यात) -->
+      <section id="tab-io" class="tab-panel">
+        <div class="container">
+          
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2 class="panel-title">Excel फाईल आयात व निर्यात (Import / Export)</h2>
+              <p class="panel-desc">तुमची जुनी DAILY REPORT.xlsx किंवा mdm_1-5_July18.xlsx फाईल अपलोड करा किंवा संपूर्ण रेकॉर्ड्स Excel मध्ये डाऊनलोड करा</p>
+            </div>
+          </div>
+
+          <div class="io-grid">
+            
+            <!-- Card 1: Import Excel -->
+            <div class="card io-card">
+              <div class="card-header">
+                <h3 class="card-title">1. अस्तित्वातील Excel फाईल आयात करा (Import)</h3>
+                <span class="badge badge-primary">SheetJS Engine</span>
+              </div>
+              <div class="card-body text-center">
+                <div class="dropzone" id="excelDropzone" onclick="document.getElementById('excelFileInput').click()">
+                  <div class="dropzone-icon">📂</div>
+                  <h4>DAILY REPORT.xlsx फाईल येथे निवडा किंवा ड्रॅग करा</h4>
+                  <p class="text-muted">.xlsx किंवा .xls फाईल सपोर्टेड</p>
+                  <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;" onchange="app.handleExcelFileUpload(event)">
+                  <button type="button" class="btn btn-outline-primary mt-2">
+                    <span>फाईल निवडा (Choose File)</span>
+                  </button>
+                </div>
+
+                <div id="importProgressBox" class="mt-3" style="display: none;">
+                  <div class="spinner"></div>
+                  <p id="importProgressText">Excel मधील माहिती वाचत आहे...</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 2: Export Excel -->
+            <div class="card io-card">
+              <div class="card-header">
+                <h3 class="card-title">2. संपूर्ण Excel अहवाल डाऊनलोड करा (Export)</h3>
+                <span class="badge badge-success">Official Multi-Sheet</span>
+              </div>
+              <div class="card-body">
+                <p>या ऑप्शनद्वारे तुमच्या सर्व दैनंदिन नोंदी, फॉर्म्युले, प्रपत्र ब आणि गोषवारा असलेले अचूक Excel तयार होईल.</p>
+                
+                <div class="form-group mt-3">
+                  <label for="exportMonthSelect" class="form-label">कोणत्या महिन्याचे Excel हवे आहे?</label>
+                  <input type="month" id="exportMonthSelect" class="form-control">
+                </div>
+
+                <div class="export-buttons-group mt-4">
+                  <button class="btn btn-success btn-lg w-100 mb-2" onclick="app.exportExcelCurrentMonth()">
+                    <span>📥 संपूर्ण मासिक अहवाल Excel (.xlsx)</span>
+                  </button>
+                  <button class="btn btn-outline-success w-100 mb-2" onclick="app.exportYearlyExcel()">
+                    <span>📅 संपूर्ण वार्षिक अहवाल Excel (1 एप्रिल ते 31 मार्च .xlsx)</span>
+                  </button>
+                  <button class="btn btn-outline-primary w-100" onclick="app.exportJsonBackup()">
+                    <span>💾 डेटा सुरक्षित बॅकअप फाईल (JSON Backup)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 3: Restore JSON Backup -->
+            <div class="card io-card full-width">
+              <div class="card-header">
+                <h3 class="card-title">3. डेटा सुरक्षा व बॅकअप रिस्टोअर (Data Safety & Restore)</h3>
+                <span class="badge badge-warning">Zero Data Loss</span>
+              </div>
+              <div class="card-body">
+                <p>तुमचा डेटा नेहमी तुमच्या ब्राउझरमध्ये सुरक्षित साठवला जातो. दुसऱ्या मोबाईल किंवा लॅपटॉपवर नेण्यासाठी बॅकअप डाऊनलोड करा व रिस्टोअर करा.</p>
+                <div class="d-flex flex-wrap gap-3 align-center mt-2">
+                  <button class="btn btn-warning" onclick="app.emergencyRestoreData()" title="चुकीने डेटा डिलीट झाल्यास सुरक्षित मागील डेटा त्वरित परत मिळवा">
+                    <span>🚑 आणीबाणी डेटा रिकव्हरी (मागील डेटा परत आणा)</span>
+                  </button>
+                  <input type="file" id="jsonBackupInput" accept=".json" style="display: none;" onchange="app.handleJsonRestore(event)">
+                  <button class="btn btn-outline-secondary" onclick="document.getElementById('jsonBackupInput').click()">
+                    <span>📂 JSON बॅकअप फाईल रिस्टोअर करा</span>
+                  </button>
+                  <button class="btn btn-outline-danger" onclick="app.clearAllDataAndStartZero()">
+                    <span>🗑️ सर्व डेटा क्लिअर करा (Start Fresh from 0 Data)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 7: SETTINGS & RULES (सेटिंग्ज व नियम) -->
+      <section id="tab-settings" class="tab-panel">
+        <div class="container">
+          
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2 class="panel-title">प्रणाली सेटिंग्ज व नियम (Admin & Settings)</h2>
+              <p class="panel-desc">शाळेचे नाव, मुख्याध्यापक, दर, मेन्यू आणि प्रति विद्यार्थी प्रमाण कॉन्फिगर करा</p>
+            </div>
+            <div class="panel-actions">
+              <button class="btn btn-primary" onclick="app.saveSettingsFromUI()">
+                <span>💾 सेटिंग्ज जतन करा</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="settings-grid">
+            
+            <!-- School Profile Card -->
+            <div class="card settings-card">
+              <div class="card-header">
+                <h3 class="card-title">🏫 1. शाळा व अधिकाऱ्यांचे तपशील</h3>
+              </div>
+              <div class="card-body">
+                <div class="form-row">
+                  <div class="form-group flex-2">
+                    <label for="setSchoolName" class="form-label">शाळेचे नांव</label>
+                    <input type="text" id="setSchoolName" class="form-control">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="setUdise" class="form-label">U-DISE कोड</label>
+                    <input type="text" id="setUdise" class="form-control">
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="setCentre" class="form-label">केंद्र (Centre)</label>
+                    <input type="text" id="setCentre" class="form-control">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="setTaluka" class="form-label">तालुका (Taluka)</label>
+                    <input type="text" id="setTaluka" class="form-control">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="setDistrict" class="form-label">जिल्हा (District)</label>
+                    <input type="text" id="setDistrict" class="form-control">
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="setPat" class="form-label">पटसंख्या (इ. 1 ते 5)</label>
+                    <input type="number" id="setPat" class="form-control">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="setHeadmaster" class="form-label">मुख्याध्यापक / सचिव नांव</label>
+                    <input type="text" id="setHeadmaster" class="form-control">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="setPresident" class="form-label">शा. व्य. स. अध्यक्ष नांव</label>
+                    <input type="text" id="setPresident" class="form-control">
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="setAssistantTeacher" class="form-label">सहशिक्षक / वर्गशिक्षक नांव</label>
+                    <input type="text" id="setAssistantTeacher" class="form-control" placeholder="उदा. श्री. पी. आर. देशमुख">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="setCookName" class="form-label">स्वयंपाकी / मदतनीस नांव</label>
+                    <input type="text" id="setCookName" class="form-control" placeholder="उदा. सौ. आशाताई कांबळे">
+                  </div>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group flex-1">
+                    <label for="setFuelRate" class="form-label">इंधन व भाजीपाला दर (रु./विद्यार्थी)</label>
+                    <input type="number" step="0.01" id="setFuelRate" class="form-control">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="setCookHonorarium" class="form-label">स्वयंपाकी मानधन दर (रु.)</label>
+                    <input type="number" id="setCookHonorarium" class="form-control">
+                  </div>
+                  <div class="form-group flex-1">
+                    <label for="setCookCount" class="form-label">स्वयंपाकी / मदतनीस संख्या</label>
+                    <input type="number" id="setCookCount" class="form-control">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Menu Management & Customization Card -->
+            <div class="card settings-card">
+              <div class="card-header flex-between">
+                <div>
+                  <h3 class="card-title">🍽️ 2. मेन्यू संपादन व व्यवस्थापन (Edit & Manage Menus)</h3>
+                  <p class="card-subtitle" style="font-size: 0.82rem; color: #64748b; margin: 0;">वारानुसार मेन्यूची नावे संपादित करा किंवा नवीन मेन्यू जोडा</p>
+                </div>
+                <div class="panel-actions">
+                  <button type="button" class="btn btn-sm btn-outline-primary" onclick="app.addNewMenuRowInSettings()">
+                    <span>➕ नवीन मेन्यू जोडा</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-primary" onclick="app.saveMenusFromSettings()">
+                    <span>💾 मेन्यू बदल जतन करा</span>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th style="width: 15%;">वार / दिवस</th>
+                        <th style="width: 40%;">मेन्यूचे नांव (Editable)</th>
+                        <th style="width: 35%;">मुख्य कडधान्य / डाळ</th>
+                        <th style="width: 10%;" class="text-center">हटवा</th>
+                      </tr>
+                    </thead>
+                    <tbody id="menusTableBody">
+                      <!-- Injected via JS -->
+                    </tbody>
+                  </table>
+                </div>
+                <div class="p-3 text-right" style="background: #f8fafc; border-top: 1px solid var(--color-border);">
+                  <button type="button" class="btn btn-primary" onclick="app.saveMenusFromSettings()">
+                    <span>💾 सर्व मेन्यू बदल जतन करा (Save Menus)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Menu & Ingredient Rules Configuration Card -->
+            <div class="card settings-card">
+              <div class="card-header flex-between">
+                <div>
+                  <h3 class="card-title">📋 3. धान्य / किराणा घटक यादी व प्रमाण नियम (Ingredient Names & Grammage Rules)</h3>
+                  <p class="card-subtitle" style="font-size: 0.82rem; color: #64748b; margin: 0;">घटकांची मराठी नावे व दर बदला किंवा नवीन धान्य/किराणा घटक जोडा</p>
+                </div>
+                <div class="panel-actions">
+                  <button type="button" class="btn btn-sm btn-outline-primary" onclick="app.openAddIngredientModal()">
+                    <span>➕ नवीन धान्य / किराणा जोडा</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-primary" onclick="app.saveIngredientRulesFromSettings()">
+                    <span>💾 घटक व दर जतन करा</span>
+                  </button>
+                </div>
+              </div>
+              <div class="card-body p-0">
+                <div class="table-responsive">
+                  <table class="table table-hover rules-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 15%;">घटक आयडी (ID)</th>
+                        <th style="width: 35%;">घटकाचे नांव (Editable Name)</th>
+                        <th style="width: 20%;">प्रति विद्यार्थी प्रमाण</th>
+                        <th style="width: 10%;">एकक (Unit)</th>
+                        <th style="width: 12%;">लागू मेन्यू</th>
+                        <th style="width: 8%;" class="text-center">क्रिया</th>
+                      </tr>
+                    </thead>
+                    <tbody id="ingredientRulesTableBody">
+                      <!-- Injected via JS -->
+                    </tbody>
+                  </table>
+                </div>
+                <div class="p-3 text-right" style="background: #f8fafc; border-top: 1px solid var(--color-border);">
+                  <button type="button" class="btn btn-primary" onclick="app.saveIngredientRulesFromSettings()">
+                    <span>💾 घटक नावे व दर जतन करा (Save Ingredient Names & Rates)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Opening / Old Stock Settings Card -->
+            <div class="card settings-card">
+              <div class="card-header flex-between">
+                <h3 class="card-title">📦 4. मागील शिल्लक धान्य / सुरुवातीचा साठा (Opening / Old Stock Settings)</h3>
+                <button class="btn btn-sm btn-primary" onclick="app.saveOldStockFromSettings()">
+                  <span>💾 मागील साठा जतन करा</span>
+                </button>
+              </div>
+              <div class="card-body">
+                <p class="form-hint mb-3" style="font-size: 0.85rem; color: #475569;">शाळेकडील सुरुवातीची मूळ मागील शिल्लक (Opening Balance) येथे भरा किंवा संपादित करा. ही सर्व महिन्यांच्या हिशोबासाठी मूळ साठा म्हणून वापरली जाईल:</p>
+                <div class="stock-inputs-grid" id="oldStockSettingsGrid">
+                  <!-- Dynamic Inputs Injected via JS -->
+                </div>
+                <div class="mt-3 text-right">
+                  <button class="btn btn-primary" onclick="app.saveOldStockFromSettings()">
+                    <span>💾 मागील शिल्लक साठा जतन करा (Save Old Stock)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Clear All Data & Reset Card -->
+            <div class="card settings-card" style="border-left: 4px solid #ef4444;">
+              <div class="card-header flex-between" style="background: #fef2f2;">
+                <div>
+                  <h3 class="card-title" style="color: #991b1b;">🗑️ 4. डेटा व्यवस्थापन व नव्याने सुरुवात (Clear Data & Start Fresh from 0)</h3>
+                  <p class="card-subtitle" style="color: #b91c1c; font-size: 0.82rem; margin: 0;">जुना किंवा सॅम्पल डेटा काढून पूर्णपणे 0 (Zero) नोंदीपासून सुरुवात करा</p>
+                </div>
+                <span class="badge badge-danger">0 डेटा रीसेट</span>
+              </div>
+              <div class="card-body">
+                <p style="font-size: 0.9rem; color: #475569; margin-bottom: 1.25rem;">
+                  जर तुम्हाला आधीचा सर्व सॅम्पल किंवा जुना डेटा काढून <strong>पूर्णपणे '0 डेटा' (Zero Data)</strong> पासून नवीन नोंदी सुरू करायच्या असतील, तर खालील बटणे वापरा. <strong>शाळेचे नाव व अधिकाऱ्यांचे सेव्ह केलेले सर्व तपशील 100% कायमस्वरूपी सुरक्षित राहतील, ते रीसेट होणार नाहीत.</strong>
+                </p>
+                <div class="d-flex gap-3 flex-wrap">
+                  <button type="button" class="btn btn-danger btn-lg" onclick="app.clearAllDataAndStartZero()">
+                    <span>🗑️ सर्व दैनिक नोंदी क्लिअर करा व 0 पासून सुरू करा (Clear All to 0 Data)</span>
+                  </button>
+                  <button type="button" class="btn btn-outline-danger" onclick="app.confirmFactoryReset()">
+                    <span>⚠️ दैनंदिन साठा 0 करा (Reset Records & Stock to 0)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 8: AUTOMATED TEST SUITE (चाचणी व पडताळणी) -->
+      <section id="tab-tests" class="tab-panel">
+        <div class="container">
+          
+          <div class="panel-header">
+            <div class="panel-title-group">
+              <h2 class="panel-title">स्वयंचलित चाचणी व पडताळणी कक्ष (Verification Test Suite)</h2>
+              <p class="panel-desc">प्रश्नावलीतील सर्व 8 टेस्ट केसेसचे स्वयंचलित मूल्यमापन</p>
+            </div>
+            <div class="panel-actions">
+              <button class="btn btn-primary" onclick="testSuite.runAllTests()">
+                <span>▶️ सर्व चाचण्या पुन्हा चालवा (Run All Tests)</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header flex-between">
+              <h3 class="card-title">चाचणी निकाल (Test Results Summary)</h3>
+              <div id="testSummaryBadge" class="badge badge-success">चाचणी सुरू करण्यासाठी वरील बटण दाबा</div>
+            </div>
+            <div class="card-body p-0">
+              <div class="test-cases-list" id="testCasesContainer">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Modal: Add Received Stock -->
+    <div id="addStockModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="modal-title">➕ नवीन धान्य / किराणा प्राप्त नोंद</h3>
+            <button class="modal-close-btn" onclick="app.closeAddStockModal()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="addStockForm" onsubmit="event.preventDefault(); app.saveStockReceipt();">
+              
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label for="stockReceiptDate" class="form-label">प्राप्त दिनांक</label>
+                  <input type="date" id="stockReceiptDate" class="form-control" required>
+                </div>
+                <div class="form-group flex-1">
+                  <label for="stockReceiptBillNo" class="form-label">पावती / चलन क्र.</label>
+                  <input type="text" id="stockReceiptBillNo" class="form-control" placeholder="उदा. Ch-405">
+                </div>
+              </div>
+
+              <h4 class="mt-3 mb-2 font-md">प्राप्त मालाचे प्रमाण भरा (कि.ग्रॅ. / ग्रॅममध्ये):</h4>
+              <div class="stock-inputs-grid" id="stockInputsGrid">
+                <!-- Injected by JS -->
+              </div>
+
+              <div class="modal-footer mt-4">
+                <button type="submit" class="btn btn-primary">
+                  <span>💾 साठा जतन करा</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="app.closeAddStockModal()">
+                  <span>रद्द करा</span>
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Edit Old / Opening Stock (मागील शिल्लक संपादन) -->
+    <div id="editOldStockModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="modal-title">✏️ मागील शिल्लक धान्य साठा संपादन (Edit Old Stock)</h3>
+            <button class="modal-close-btn" onclick="app.closeEditOldStockModal()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="editOldStockForm" onsubmit="event.preventDefault(); app.saveOldStockFromModal();">
+              <p class="form-hint mb-3" style="font-size: 0.88rem; color: #334155;">शाळेकडील सुरुवातीचा शिल्लक माल (Opening Stock) कि.ग्रॅ. मध्ये भरा:</p>
+              
+              <div class="stock-inputs-grid" id="oldStockInputsGrid">
+                <!-- Injected by JS -->
+              </div>
+
+              <div class="modal-footer mt-4">
+                <button type="submit" class="btn btn-primary">
+                  <span>💾 मागील शिल्लक साठा जतन करा</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="app.closeEditOldStockModal()">
+                  <span>रद्द करा</span>
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Add New Ingredient / Grain (नवीन धान्य / किराणा घटक जोडा) -->
+    <div id="addIngredientModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-content" style="border-top: 4px solid #16a34a;">
+          <div class="modal-header" style="background: #f0fdf4;">
+            <h3 class="modal-title" style="color: #166534;">➕ नवीन धान्य / किराणा घटक जोडा</h3>
+            <button class="modal-close-btn" onclick="app.closeAddIngredientModal()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="addIngredientForm" onsubmit="event.preventDefault(); app.saveNewIngredient();">
+              <div class="form-group mb-3">
+                <label for="newIngName" class="form-label font-bold">धान्य / किराणा घटकाचे नांव <span class="req">*</span></label>
+                <input type="text" id="newIngName" class="form-control" placeholder="उदा. चवळी, राजगिरा, बाजरी, ज्वारी, गहू, नाचणी..." required>
+              </div>
+
+              <div class="form-row mb-3">
+                <div class="form-group flex-1">
+                  <label for="newIngCategory" class="form-label font-bold">घटकाचा प्रकार / वर्गवारी <span class="req">*</span></label>
+                  <select id="newIngCategory" class="form-select" required>
+                    <option value="pulse">कडधान्य / डाळ (Pulse - मेन्यू/निवडीनुसार)</option>
+                    <option value="grain">मुख्य धान्य (Grain - तांदूळ/गहू/बाजरी/ज्वारी)</option>
+                    <option value="spice">किराणा व मसाले (Spice/Grocery)</option>
+                    <option value="oil">तेल (Oil)</option>
+                    <option value="salt">मीठ (Salt)</option>
+                    <option value="other">इतर पूरक घटक (Other)</option>
+                  </select>
+                </div>
+
+                <div class="form-group flex-1">
+                  <label for="newIngUnit" class="form-label font-bold">मोजमाप एकक (Unit)</label>
+                  <select id="newIngUnit" class="form-select">
+                    <option value="kg">कि.ग्रॅ. (kg)</option>
+                    <option value="litre">लिटर (litre)</option>
+                    <option value="gram">ग्रॅम (gram)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row mb-3">
+                <div class="form-group flex-1">
+                  <label for="newIngRate" class="form-label font-bold">प्रति विद्यार्थी प्रमाण दर (Rate per Child) <span class="req">*</span></label>
+                  <input type="number" step="0.00001" id="newIngRate" class="form-control" placeholder="उदा. 0.020 (20 ग्रॅम)" value="0.020" required>
+                  <small class="form-hint">उदा. डाळ/उसळ साठी 0.020 kg (20g), मुख्य धान्यासाठी 0.100 kg (100g)</small>
+                </div>
+
+                <div class="form-group flex-1">
+                  <label for="newIngOpeningStock" class="form-label font-bold">सुरुवातीचा शिल्लक साठा (Opening Stock kg)</label>
+                  <input type="number" step="0.001" id="newIngOpeningStock" class="form-control" placeholder="0.00 (ऋण / मायनस नोंदही शक्य)" value="0">
+                  <small class="form-hint">मागील शिल्लक साठा (मायनस असल्यास - टाका)</small>
+                </div>
+              </div>
+
+              <div class="modal-footer mt-4">
+                <button type="submit" class="btn btn-success" style="background: #16a34a; font-weight: 700;">
+                  <span>💾 नवीन धान्य जतन करा (Save Ingredient)</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="app.closeAddIngredientModal()">
+                  <span>रद्द करा</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Add Damaged / Expired Stock -->
+    <div id="addDamagedStockModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog">
+        <div class="modal-content" style="border-top: 4px solid #f59e0b;">
+          <div class="modal-header" style="background: #fffbeb;">
+            <h3 class="modal-title" style="color: #92400e;">⚠️ खराब / मुदत संपलेले / नासाडी धान्य नोंद</h3>
+            <button class="modal-close-btn" onclick="app.closeAddDamagedStockModal()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <form id="addDamagedStockForm" onsubmit="event.preventDefault(); app.saveDamagedStock();">
+              <p class="form-hint mb-3" style="color: #475569; font-size: 0.85rem;">
+                येथे नोंदवलेले खराब / नासाडी झालेले धान्य संबंधित महिन्यातील एकूण वापर (Consumed) मध्ये आपोआप जोडले जाईल व साठ्यातून कमी केले जाईल.
+              </p>
+              
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label for="damagedStockDate" class="form-label" style="font-weight: 700;">खराब / पंचनामा दिनांक</label>
+                  <input type="date" id="damagedStockDate" class="form-control" required>
+                </div>
+                <div class="form-group flex-1">
+                  <label for="damagedStockReason" class="form-label" style="font-weight: 700;">कारण / पंचनामा क्र. / शेरा</label>
+                  <input type="text" id="damagedStockReason" class="form-control" placeholder="उदा. किड लागल्यामुळे पंचनामा क्र. 12" required>
+                </div>
+              </div>
+
+              <h4 class="mt-3 mb-2 font-md" style="font-weight: 700; color: #1e293b;">खराब / नासाडी झालेल्या धान्याचे प्रमाण भरा (कि.ग्रॅ. मध्ये):</h4>
+              <div class="stock-inputs-grid" id="damagedStockInputsGrid">
+                <!-- Injected by JS -->
+              </div>
+
+              <div class="modal-footer mt-4">
+                <button type="submit" class="btn btn-warning" style="font-weight: 700;">
+                  <span>💾 खराब धान्य नोंद जतन करा व साठ्यातून वजा करा</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="app.closeAddDamagedStockModal()">
+                  <span>रद्द करा</span>
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Cloud Sync Settings & Multi-Device Sync -->
+    <div id="cloudSyncModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog" style="max-width: 650px;">
+        <div class="modal-content" style="border-top: 4px solid #2563eb;">
+          <div class="modal-header" style="background: #eff6ff;">
+            <h3 class="modal-title" style="color: #1e40af;">☁️ मल्टि-डिव्हाइस (मोबाईल व लॅपटॉप) सिंक व्यवस्थापन</h3>
+            <button class="modal-close-btn" onclick="app.closeCloudSyncModal()">&times;</button>
+          </div>
+          <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+            
+            <!-- Method 1: WhatsApp 1-Click Instant Sync (100% Reliable & Guaranteed) -->
+            <div class="p-3 mb-4" style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px;">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span style="font-size: 1.4rem;">📲</span>
+                <h4 style="font-weight: 800; color: #166534; margin: 0;">पद्धत 1: WhatsApp द्वारे 1-क्लिक इन्स्टंट डेटा सिंक</h4>
+              </div>
+              <p style="font-size: 0.85rem; color: #15803d; margin-bottom: 12px;">
+                कोणत्याही सर्व्हर किंवा गुगल खात्याशिवाय — एका क्लिकवर संपूर्ण डेटा किंवा आजची नोंद WhatsApp वर पाठवून मोबाईल व लॅपटॉप सिंक करा!
+              </p>
+              
+              <div class="d-flex flex-column gap-2">
+                <button type="button" class="btn btn-success" style="background: #16a34a; border-color: #15803d; font-weight: 700; text-align: left; padding: 0.6rem 1rem;" onclick="app.shareFullDataViaWhatsApp()">
+                  <span>📲 संपूर्ण शाळा डेटा WhatsApp वर पाठवा (मोबाईलवर उघडण्यासाठी)</span>
+                </button>
+                <button type="button" class="btn btn-outline-success" style="font-weight: 600; text-align: left; padding: 0.5rem 1rem;" onclick="app.shareTodayEntryViaWhatsApp(document.getElementById('entryDate') ? document.getElementById('entryDate').value : new Date().toISOString().split('T')[0])">
+                  <span>📝 आजची भरलेली दैनिक नोंद WhatsApp ने पाठवा (लॅपटॉपवर जोडण्यासाठी)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Method 2: Google Firebase Realtime Cloud Database -->
+            <div class="p-3 mb-3" style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px;">
+              <div class="d-flex align-items-center gap-2 mb-2">
+                <span style="font-size: 1.4rem;">☁️</span>
+                <h4 style="font-weight: 800; color: #1e293b; margin: 0;">पद्धत 2: Google Firebase Realtime Cloud Database (लाईव्ह ऑटो-सिंक)</h4>
+              </div>
+              <p style="font-size: 0.82rem; color: #475569; margin-bottom: 12px;">
+                शाळेच्या खात्यावर आपोआप लाईव्ह सिंक सुरू करण्यासाठी मोफत Google Firebase Database URL जोडा.
+              </p>
+
+              <div id="cloudModalStatusText" class="mb-3">
+                <span class="badge badge-secondary">स्थिती: तपासत आहे...</span>
+              </div>
+
+              <form id="cloudSyncForm" onsubmit="event.preventDefault(); app.saveCloudSyncSettings();">
+                <div class="form-group mb-3">
+                  <label class="form-label" style="font-weight: 700;">शाळेचा UDISE क्रमांक:</label>
+                  <input type="text" id="cloudSchoolCode" class="form-control" placeholder="उदा. 27240801201" required>
+                </div>
+
+                <div class="form-group mb-3">
+                  <label class="form-label" style="font-weight: 700;">सुरक्षा पिन (Secret PIN):</label>
+                  <input type="password" id="cloudSecretPin" class="form-control" value="Ican@123" required>
+                </div>
+
+                <div class="form-group mb-3">
+                  <label class="form-label" style="font-weight: 700;">Google Firebase Database URL (पर्यायी):</label>
+                  <input type="url" id="cloudFirebaseUrl" class="form-control" placeholder="https://your-project-default-rtdb.firebaseio.com/">
+                  <small class="form-hint">मोफत Google Firebase Realtime Database ची URL टाकल्यास सर्व डिव्हाइसेसवर ऑटोमॅटिक लाईव्ह सिंक होते.</small>
+                </div>
+
+                <div class="p-2 mb-3" style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; font-size: 0.8rem; color: #1e3a8a;">
+                  <strong>💡 Firebase ला डेटा जाण्यासाठी काय करावे? (4 सोप्या पायऱ्या)</strong>
+                  <ol class="m-0 ps-3 mt-1" style="line-height: 1.5;">
+                    <li>Google वर <strong>Firebase Console</strong> उघडून <strong>Realtime Database</strong> तयार करा (Firestore नाही).</li>
+                    <li>डेटाबेसच्या <strong>Rules</strong> टॅबमध्ये <code>{ "rules": { ".read": true, ".write": true } }</code> सेट करून <strong>Publish</strong> करा.</li>
+                    <li>डेटाबेसच्या वर दिसणारी URL (उदा. <code>https://xxx-default-rtdb.firebaseio.com/</code>) वरील बॉक्समध्ये पेस्ट करा.</li>
+                    <li><strong>"🔍 Firebase कनेक्शन तपासा"</strong> दाबा व यशस्वी संदेश आल्यावर खालील <strong>"💾 सेव्ह करा व सुरू करा"</strong> बटण दाबा.</li>
+                  </ol>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                  <button type="button" class="btn btn-sm btn-outline-info" onclick="app.testFirebaseConnection()">
+                    <span>🔍 Firebase कनेक्शन तपासा</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-primary" id="btnCloudSyncNow" onclick="app.syncCloudNow()">
+                    <span>☁️ आता क्लाऊडवर सेव्ह करा</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-secondary" onclick="app.pullCloudNow()">
+                    <span>📥 क्लाऊडवरून आणा</span>
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-warning" onclick="app.emergencyRestoreData()" title="चुकीने डेटा डिलीट झाला असल्यास सुरक्षित मागील डेटा परत मिळवा">
+                    <span>🚑 आणीबाणी डेटा रिकव्हरी</span>
+                  </button>
+                </div>
+
+                <div class="modal-footer flex-between mt-3 p-0 pt-3" style="border-top: 1px solid #e2e8f0;">
+                  <button type="button" class="btn btn-outline-danger" onclick="app.disableCloudSync()">
+                    <span>❌ सिंक बंद करा</span>
+                  </button>
+                  <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" onclick="app.closeCloudSyncModal()">
+                      <span>बंद करा</span>
+                    </button>
+                    <button type="submit" class="btn btn-primary" style="font-weight: 700;">
+                      <span>💾 सेव्ह करा व सुरू करा</span>
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Quick Multi-School Switcher (जलद शाळा स्विचर) -->
+    <div id="schoolSwitcherModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-dialog" style="max-width: 580px;">
+        <div class="modal-content" style="border-top: 4px solid #10b981;">
+          <div class="modal-header" style="background: #f0fdf4;">
+            <h3 class="modal-title" style="color: #065f46;">🏫 शाळा बदला / जलद स्विच करा</h3>
+            <button class="modal-close-btn" onclick="app.closeSchoolSwitcherModal()">&times;</button>
+          </div>
+          <div class="modal-body" style="max-height: 75vh; overflow-y: auto;">
+            
+            <div class="mb-3">
+              <label class="form-label fw-bold text-dark d-flex justify-content-between align-items-center">
+                <span>या डिव्हाइसवर नोंदवलेल्या शाळा:</span>
+                <span class="text-muted" style="font-size: 0.75rem;">क्लिक करून थेट स्विच करा</span>
+              </label>
+              <div id="schoolSwitcherModalList" class="registered-schools-list mb-2">
+                <!-- Dynamically populated by app.renderRegisteredSchoolsList() -->
+              </div>
+            </div>
+
+            <div class="auth-divider my-3">
+              <span>किंवा नवीन शाळा जोडा</span>
+            </div>
+
+            <div class="p-3 bg-light rounded border">
+              <label for="modalNewSchoolUdise" class="form-label fw-bold small text-dark">
+                ➕ नवीन शाळेचा 11 अंकी UDISE टाका:
+              </label>
+              <div class="input-group mb-2">
+                <input type="text" class="form-control text-center fw-bold fs-5" id="modalNewSchoolUdise" maxlength="11" placeholder="उदा. 27240801201" autocomplete="off" oninput="this.value = this.value.replace(/\D/g, '').slice(0, 11)" onkeydown="if(event.key==='Enter') { const u = this.value.trim(); if(u.length===11) app.switchSchoolDirectly(u); }">
+                <button class="btn btn-primary fw-bold" type="button" onclick="const u = document.getElementById('modalNewSchoolUdise').value.trim(); if(u.length===11) app.switchSchoolDirectly(u); else alert('कृपया 11 अंकी UDISE कोड टाका.');">
+                  जोडा व उघडा 🚀
+                </button>
+              </div>
+              <small class="text-muted">टीप: नवीन शाळा जोडल्यास तिच्यासाठी स्वतंत्र नवीन डेटा सुरक्षित तयार होईल.</small>
+            </div>
+
+          </div>
+          <div class="modal-footer d-flex justify-content-between">
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="app.closeSchoolSwitcherModal(); app.logoutSchool();">
+              🚪 शाळा पूर्ण लॉगआउट करा
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="app.closeSchoolSwitcherModal()">
+              बंद करा
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="printSlipContainer" class="print-only-slip"></div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+  </div>
+
+  <!-- Application Logic Scripts -->
+  <script src="cloud-sync.js"></script>
+  <script src="excel-engine.js"></script>
+  <script src="test-suite.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

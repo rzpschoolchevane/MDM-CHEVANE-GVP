@@ -485,11 +485,12 @@ body {
   border-top: 1px solid var(--color-border);
 }
 
-/* Daily Hero Stats Ribbon */
+/* Daily Hero Stats Ribbon - Sutsutit & Attractive Modern Metric Strip */
 .daily-hero-stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
 }
 
 @media (max-width: 1100px) {
@@ -507,20 +508,20 @@ body {
 .hero-stat-card {
   background: #ffffff;
   border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06);
-  padding: 1.1rem 1.2rem;
+  border: 1.5px solid var(--color-border);
+  box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.05);
+  padding: 0.75rem 0.95rem;
   display: flex;
   align-items: center;
-  gap: 0.9rem;
+  gap: 0.75rem;
   position: relative;
   overflow: hidden;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hero-stat-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 24px -4px rgba(15, 23, 42, 0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -3px rgba(15, 23, 42, 0.1);
 }
 
 .hero-stat-card::before {
@@ -528,33 +529,45 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  width: 5px;
+  width: 4px;
   height: 100%;
 }
 
-.hero-stat-card.card-attendance { background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%); }
-.hero-stat-card.card-attendance::before { background: #3b82f6; }
+.hero-stat-card.card-attendance { 
+  background: linear-gradient(135deg, #ffffff 0%, #f0f7ff 100%); 
+  border-color: #bfdbfe;
+}
+.hero-stat-card.card-attendance::before { background: #2563eb; }
 
-.hero-stat-card.card-menu { background: linear-gradient(135deg, #ffffff 0%, #fef3c7 100%); }
+.hero-stat-card.card-menu { 
+  background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%); 
+  border-color: #fde68a;
+}
 .hero-stat-card.card-menu::before { background: #f59e0b; }
 
-.hero-stat-card.card-grains { background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%); }
+.hero-stat-card.card-grains { 
+  background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%); 
+  border-color: #a7f3d0;
+}
 .hero-stat-card.card-grains::before { background: #10b981; }
 
-.hero-stat-card.card-fuel { background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%); }
+.hero-stat-card.card-fuel { 
+  background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%); 
+  border-color: #e9d5ff;
+}
 .hero-stat-card.card-fuel::before { background: #8b5cf6; }
 
 .stat-icon-wrapper {
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   background: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.05);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.55rem;
+  font-size: 1.35rem;
   flex-shrink: 0;
 }
 
@@ -731,6 +744,385 @@ body {
   .entry-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Dashboard Specific Sutsutit Layout Enhancements */
+.dashboard-header {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1.15rem;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.dashboard-badge-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.35rem;
+  flex-shrink: 0;
+}
+
+.entry-section-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  padding: 0.9rem;
+  margin-bottom: 0.9rem;
+}
+
+.entry-section-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.entry-attendance-box {
+  background: linear-gradient(135deg, #f8fafc 0%, #f0fdf4 100%);
+  border: 1.5px solid #86efac;
+  border-radius: var(--radius-md);
+  padding: 0.95rem;
+  margin-bottom: 0.9rem;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.06);
+}
+
+.calc-table th {
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 700;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.82rem;
+  border-bottom: 2px solid #cbd5e1;
+}
+
+.calc-table td {
+  padding: 0.45rem 0.65rem;
+  font-size: 0.85rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.calc-table tr:hover td {
+  background: #f8fafc;
+}
+
+.calc-table tfoot th {
+  background: #f0fdf4;
+  color: #166534;
+  font-weight: 800;
+  border-top: 2px solid #86efac;
+}
+
+/* Day Display Box */
+.day-display-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.85rem;
+  min-height: 44px;
+}
+
+.day-display-box #entryDayText {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 0.95rem;
+}
+
+.day-code-tag {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  border: 1px solid #bae6fd;
+}
+
+/* Selection Mode Toggle (Auto vs Manual Pills) */
+.selection-mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  background: #f1f5f9;
+  padding: 0.3rem;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+}
+
+.radio-pill {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.65rem;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  margin: 0;
+  border: 1px solid transparent;
+}
+
+.radio-pill input[type="radio"] {
+  margin: 0;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.radio-pill:hover {
+  color: #1e293b;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.radio-pill:has(input:checked) {
+  background: #ffffff;
+  color: #1e40af;
+  font-weight: 700;
+  border-color: #bfdbfe;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* Manual Grains Box & Checkbox Chips */
+.manual-grains-box {
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: var(--radius-md);
+  padding: 0.85rem;
+}
+
+.grains-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.45rem;
+}
+
+.checkbox-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #ffffff;
+  border: 1.5px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #166534;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  margin: 0;
+}
+
+.checkbox-chip:hover {
+  background: #ecfdf5;
+  border-color: #4ade80;
+}
+
+.checkbox-chip:has(input:checked) {
+  background: #dcfce7;
+  border-color: #22c55e;
+  font-weight: 700;
+  color: #14532d;
+  box-shadow: 0 1px 4px rgba(34, 197, 94, 0.2);
+}
+
+.checkbox-chip input[type="checkbox"] {
+  accent-color: #16a34a;
+  cursor: pointer;
+}
+
+/* Attendance Stepper & Display */
+.attendance-stepper-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  margin: 0.5rem 0;
+}
+
+.btn-stepper-round {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #2563eb;
+  color: #2563eb;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);
+  user-select: none;
+}
+
+.btn-stepper-round:hover {
+  background: #2563eb;
+  color: #ffffff;
+  transform: scale(1.08);
+}
+
+.btn-stepper-round:active {
+  transform: scale(0.95);
+}
+
+.attendance-input-display {
+  width: 140px;
+  height: 52px;
+  font-size: 2.1rem;
+  font-weight: 900;
+  text-align: center;
+  color: #0f172a;
+  background: #ffffff;
+  border: 2.5px solid #3b82f6;
+  border-radius: 12px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(59, 130, 246, 0.15);
+  font-family: inherit;
+}
+
+.attendance-input-display:focus {
+  outline: none;
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+}
+
+/* Button Enhancements */
+.btn-hero-save {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border: none;
+  color: #ffffff;
+  font-size: 1.02rem;
+  font-weight: 800;
+  padding: 0.75rem 1.4rem;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-hero-save:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.45);
+}
+
+.btn-hero-save:active {
+  transform: scale(0.98);
+}
+
+.btn-whatsapp {
+  background: #16a34a;
+  border: 1px solid #15803d;
+  color: #ffffff;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-whatsapp:hover {
+  background: #15803d;
+  transform: translateY(-1px);
+  color: #ffffff;
+}
+
+/* Calculation Badges & Row Highlights */
+.kitchen-qty-badge {
+  display: inline-block;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.12rem 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.highlight-row {
+  background: #f8fafc;
+}
+
+.highlight-row td {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.shortage-row {
+  background: #fef2f2 !important;
+}
+
+.shortage-row td {
+  color: #b91c1c;
+}
+
+/* Quick Summary Chips in Calculation Card Footer */
+.quick-summary-chips {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.65rem;
+}
+
+@media (max-width: 768px) {
+  .quick-summary-chips {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.summary-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.84rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.chip-label {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.chip-val {
+  color: #0f172a;
+  font-weight: 800;
 }
 
 /* Forms */

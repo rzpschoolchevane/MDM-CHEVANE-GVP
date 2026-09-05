@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>शालेय पोषण आहार दैनिक नोंद व अहवाल प्रणाली (MDM Daily Report System)</title>
   <meta name="description" content="शालेय पोषण आहार दैनिक नोंद, स्वयंचलित धान्य हिशोब, मासिक प्रपत्र ब आणि एक्सेल अहवाल प्रणाली">
+  <meta name="theme-color" content="#091e42">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="पोषण आहार">
+  <meta name="author" content="श्री गणेश विलास पष्टे">
   
   <!-- Google Fonts: Noto Sans Devanagari & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -64,6 +70,11 @@
       </div>
 
       <div class="auth-footer text-center">
+        <div class="mb-1">
+          <span class="badge" style="background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; font-size: 0.76rem; padding: 4px 10px;">
+            ⭐ ॲप निर्मिती : <strong>श्री गणेश विलास पष्टे</strong> ⭐
+          </span>
+        </div>
         <small class="text-muted">PM POSHAN दैनिक नोंद व अहवाल प्रणाली | सर्व हक्क राखीव</small>
       </div>
     </div>
@@ -135,12 +146,27 @@
       </div>
 
       <div class="auth-footer text-center">
+        <div class="mb-1">
+          <span class="badge" style="background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; font-size: 0.76rem; padding: 4px 10px;">
+            ⭐ ॲप निर्मिती : <strong>श्री गणेश विलास पष्टे</strong> ⭐
+          </span>
+        </div>
         <small class="text-muted">टीप: प्रत्येक शाळेचा डेटा स्वतंत्रपणे सुरक्षित राहतो. शाळा बदलायची असल्यास "शाळा बदला" बटण वापरा.</small>
       </div>
     </div>
   </div>
 
   <div id="app" class="app-wrapper">
+    <!-- Permanent Creator Golden Ribbon (कायमस्वरूपी अ‍ॅप निर्मिती श्रेय) -->
+    <div class="creator-ribbon no-print">
+      <div class="creator-ribbon-content">
+        <span class="ribbon-star">⭐</span>
+        <span class="ribbon-title">ॲप निर्मिती :</span>
+        <span class="ribbon-name">श्री गणेश विलास पष्टे</span>
+        <span class="ribbon-star">⭐</span>
+      </div>
+    </div>
+
     <!-- Top Header -->
     <header class="app-header no-print">
       <div class="header-container">
@@ -149,7 +175,10 @@
             <span class="logo-icon">🍲</span>
           </div>
           <div class="brand-details">
-            <h1 class="brand-title">शालेय पोषण आहार दैनिक नोंद प्रणाली</h1>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <h1 class="brand-title">शालेय पोषण आहार दैनिक नोंद प्रणाली</h1>
+              <span class="creator-mini-badge no-print">निर्माता: श्री गणेश विलास पष्टे</span>
+            </div>
             <p class="brand-subtitle" id="headerSchoolName">रा. जि. प. प्राथमिक शाळा मेंगाळवाडी | केंद्र: खांडस | ता. कर्जत, जि. रायगड</p>
           </div>
         </div>
@@ -1523,6 +1552,29 @@
 
           <div class="settings-grid">
             
+            <!-- App Creator & Developer Information Card -->
+            <div class="card settings-card" style="border: 2px solid #3b82f6; background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%);">
+              <div class="card-header" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: #ffffff;">
+                <div class="d-flex align-items-center gap-2">
+                  <span style="font-size: 1.35rem;">🏆</span>
+                  <h3 class="card-title" style="color: #ffffff; margin: 0;">ॲप संकल्पना, रचना व निर्मिती</h3>
+                </div>
+                <span class="badge" style="background: #f59e0b; color: #000; font-weight: 700;">अधिकृत निर्माता</span>
+              </div>
+              <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                  <div style="width: 56px; height: 56px; border-radius: 50%; background: #dbeafe; display: flex; align-items: center; justify-content: center; font-size: 2rem; border: 2.5px solid #3b82f6; flex-shrink: 0; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.2);">
+                    👨‍💻
+                  </div>
+                  <div>
+                    <h4 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: #1e3a8a;">श्री गणेश विलास पष्टे</h4>
+                    <p style="margin: 2px 0 0; font-size: 0.88rem; color: #475569; font-weight: 600;">शालेय पोषण आहार (PM POSHAN) संगणकीय व मोबाईल प्रणाली निर्माता</p>
+                    <small style="color: #059669; font-weight: 700; font-size: 0.8rem;">✅ अधिकृत व कायमस्वरूपी सॉफ्टवेअर निर्मिती श्रेय</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- School Profile Card -->
             <div class="card settings-card">
               <div class="card-header">
@@ -1762,6 +1814,114 @@
       </section>
 
     </main>
+
+    <!-- App Footer with Permanent Creator Attribution -->
+    <footer class="app-footer no-print">
+      <div class="footer-container">
+        <div class="creator-badge-box">
+          <span class="creator-icon">🏆</span>
+          <span class="creator-text">ॲप निर्मिती : <strong>श्री गणेश विलास पष्टे</strong></span>
+        </div>
+        <p class="footer-desc">शालेय पोषण आहार (PM POSHAN) दैनिक नोंद, स्वयंचलित धान्य हिशोब व अधिकृत अहवाल प्रणाली</p>
+        <p class="footer-copy">सर्व हक्क सुरक्षित © 2026 | अधिकृत सॉफ्टवेअर रचना व निर्मिती: श्री गणेश विलास पष्टे</p>
+      </div>
+    </footer>
+
+    <!-- Native Mobile App Bottom Navigation Bar -->
+    <nav class="mobile-bottom-nav no-print" id="mobileBottomNav">
+      <button class="bottom-nav-item active" data-tab="daily" onclick="app.switchTab('daily')">
+        <span class="bottom-nav-icon">📝</span>
+        <span class="bottom-nav-label">दैनिक नोंद</span>
+      </button>
+      <button class="bottom-nav-item" data-tab="register" onclick="app.switchTab('register')">
+        <span class="bottom-nav-icon">📖</span>
+        <span class="bottom-nav-label">नोंदवही</span>
+      </button>
+      <button class="bottom-nav-item" data-tab="monthly" onclick="app.switchTab('monthly')">
+        <span class="bottom-nav-icon">📊</span>
+        <span class="bottom-nav-label">मासिक</span>
+      </button>
+      <button class="bottom-nav-item" data-tab="taste" onclick="app.switchTab('taste')">
+        <span class="bottom-nav-icon">👅</span>
+        <span class="bottom-nav-label">चव नोंद</span>
+      </button>
+      <button class="bottom-nav-item" id="bottomNavMoreBtn" onclick="app.openMobileMoreDrawer()">
+        <span class="bottom-nav-icon">📱</span>
+        <span class="bottom-nav-label">सर्व मेनू</span>
+      </button>
+    </nav>
+
+    <!-- Native Mobile Bottom Sheet / Drawer for All Tabs & Tools -->
+    <div id="mobileMoreDrawer" class="mobile-drawer-overlay no-print" onclick="app.closeMobileMoreDrawer(event)" style="display: none;">
+      <div class="mobile-drawer-content" onclick="event.stopPropagation()">
+        <div class="drawer-drag-handle"></div>
+        <div class="drawer-header">
+          <div class="d-flex align-items-center gap-2">
+            <span style="font-size: 1.4rem;">🍲</span>
+            <div>
+              <h3 class="drawer-title">पोषण आहार ॲप मेनू</h3>
+              <small class="text-muted">सर्व अहवाल, वह्या व साधने</small>
+            </div>
+          </div>
+          <button class="drawer-close-btn" onclick="app.closeMobileMoreDrawer()">✕</button>
+        </div>
+
+        <div class="drawer-creator-ribbon mb-3">
+          ⭐ ॲप निर्मिती : <strong>श्री गणेश विलास पष्टे</strong> ⭐
+        </div>
+
+        <div class="drawer-grid">
+          <button class="drawer-tile" onclick="app.switchTab('daily'); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">📝</span>
+            <span class="drawer-tile-label">दैनिक नोंद</span>
+          </button>
+          <button class="drawer-tile" onclick="app.switchTab('register'); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">📖</span>
+            <span class="drawer-tile-label">नोंदवही</span>
+          </button>
+          <button class="drawer-tile" onclick="app.switchTab('monthly'); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">📊</span>
+            <span class="drawer-tile-label">मासिक अहवाल</span>
+          </button>
+          <button class="drawer-tile" onclick="app.switchTab('formb'); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">📄</span>
+            <span class="drawer-tile-label">प्रपत्र ब</span>
+          </button>
+          <button class="drawer-tile" onclick="app.switchTab('yearly'); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">📅</span>
+            <span class="drawer-tile-label">वार्षिक अहवाल</span>
+          </button>
+          <button class="drawer-tile" onclick="app.switchTab('taste'); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">👅</span>
+            <span class="drawer-tile-label">चव नोंदवही</span>
+          </button>
+          <button class="drawer-tile" onclick="app.switchTab('stock'); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">📦</span>
+            <span class="drawer-tile-label">साठा व्यवस्थापन</span>
+          </button>
+          <button class="drawer-tile" onclick="app.switchTab('io'); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">🔄</span>
+            <span class="drawer-tile-label">Excel आयात/निर्यात</span>
+          </button>
+          <button class="drawer-tile" onclick="app.switchTab('settings'); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">⚙️</span>
+            <span class="drawer-tile-label">सेटिंग्ज व नियम</span>
+          </button>
+          <button class="drawer-tile" onclick="app.switchTab('tests'); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">🧪</span>
+            <span class="drawer-tile-label">चाचणी</span>
+          </button>
+          <button class="drawer-tile highlight-school" onclick="app.openSchoolSwitcherModal(); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">🏫</span>
+            <span class="drawer-tile-label">शाळा बदला</span>
+          </button>
+          <button class="drawer-tile highlight-cloud" onclick="app.openCloudSyncModal(); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">☁️</span>
+            <span class="drawer-tile-label">क्लाऊड सिंक</span>
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Modal: Add Received Stock -->
     <div id="addStockModal" class="modal-backdrop" style="display: none;">

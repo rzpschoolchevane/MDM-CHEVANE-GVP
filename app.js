@@ -2130,11 +2130,32 @@ const app = {
       t.classList.toggle('active', t.dataset.tab === tabId);
     });
 
+    document.querySelectorAll('.bottom-nav-item').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === tabId);
+    });
+
     document.querySelectorAll('.tab-panel').forEach(p => {
       p.classList.toggle('active', p.id === `tab-${tabId}`);
     });
 
     this.renderCurrentTab();
+  },
+
+  openMobileMoreDrawer() {
+    const drawer = document.getElementById('mobileMoreDrawer');
+    if (drawer) {
+      drawer.style.display = 'flex';
+      setTimeout(() => drawer.classList.add('open'), 10);
+    }
+  },
+
+  closeMobileMoreDrawer(e) {
+    if (e && e.target && e.target.closest('.mobile-drawer-content') && !e.target.classList.contains('drawer-close-btn') && !e.target.closest('.drawer-tile')) return;
+    const drawer = document.getElementById('mobileMoreDrawer');
+    if (drawer) {
+      drawer.classList.remove('open');
+      setTimeout(() => { drawer.style.display = 'none'; }, 220);
+    }
   },
 
   /**

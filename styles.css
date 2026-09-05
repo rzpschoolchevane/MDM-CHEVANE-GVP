@@ -80,6 +80,121 @@ body {
   overflow-x: hidden;
 }
 
+/* ==========================================================================
+   Creator Attribution Ribbon (कायमस्वरूपी अ‍ॅप निर्मिती श्रेय)
+   ========================================================================== */
+.creator-ribbon {
+  background: linear-gradient(90deg, #78350f 0%, #b45309 25%, #f59e0b 50%, #b45309 75%, #78350f 100%);
+  color: #ffffff;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  border-bottom: 1.5px solid rgba(254, 243, 199, 0.45);
+  position: relative;
+  z-index: 101;
+  letter-spacing: 0.3px;
+  user-select: none;
+}
+
+.creator-ribbon-content {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ribbon-star {
+  color: #fef08a;
+  font-size: 1rem;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+
+.ribbon-title {
+  color: #fef3c7;
+  font-weight: 600;
+}
+
+.ribbon-name {
+  color: #ffffff;
+  font-weight: 800;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  letter-spacing: 0.4px;
+}
+
+.creator-mini-badge {
+  background: rgba(245, 158, 11, 0.22);
+  border: 1px solid rgba(251, 191, 36, 0.6);
+  color: #fef08a;
+  padding: 2px 9px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+/* App Footer with Creator Attribution */
+.app-footer {
+  background: #091e42;
+  color: #cbd5e1;
+  padding: 2.25rem 1.5rem;
+  margin-top: auto;
+  border-top: 2px solid #1e3a8a;
+  text-align: center;
+}
+
+.footer-container {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.creator-badge-box {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.18) 0%, rgba(217, 119, 6, 0.3) 100%);
+  border: 1.5px solid #f59e0b;
+  color: #fef08a;
+  padding: 0.55rem 1.35rem;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.96rem;
+  font-weight: 700;
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.2);
+}
+
+.creator-badge-box strong {
+  color: #ffffff;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.footer-desc {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.footer-copy {
+  font-size: 0.76rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Desktop default: Hide Mobile Bottom Nav and Drawer */
+.mobile-bottom-nav,
+.mobile-drawer-overlay {
+  display: none;
+}
+
 /* Header */
 .app-header {
   background: linear-gradient(135deg, #091e42 0%, #1e3a8a 55%, #2563eb 100%);
@@ -3818,6 +3933,224 @@ body {
   .stock-cards-grid {
     grid-template-columns: 1fr 1fr;
     gap: 0.5rem;
+  }
+
+  /* 10. Native Mobile App Bottom Navigation Bar */
+  .mobile-bottom-nav {
+    display: flex !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 62px !important;
+    background: #091e42 !important;
+    border-top: 1.5px solid rgba(59, 130, 246, 0.45) !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.35) !important;
+    z-index: 1000 !important;
+    justify-content: space-around !important;
+    align-items: stretch !important;
+    padding: 0 4px !important;
+    padding-bottom: env(safe-area-inset-bottom, 0) !important;
+  }
+
+  .bottom-nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 4px 0;
+    gap: 2px;
+    font-size: 0.69rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: 8px;
+  }
+
+  .bottom-nav-item:active {
+    transform: scale(0.92);
+  }
+
+  .bottom-nav-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+    padding: 3px 12px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+  }
+
+  .bottom-nav-item.active {
+    color: #38bdf8;
+    font-weight: 700;
+  }
+
+  .bottom-nav-item.active .bottom-nav-icon {
+    background: rgba(56, 189, 248, 0.2);
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.35);
+  }
+
+  .bottom-nav-label {
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  /* Safe space at bottom so bottom nav does not block page content or submit buttons */
+  .app-main {
+    padding-bottom: 82px !important;
+  }
+
+  .app-footer {
+    padding-bottom: calc(82px + 1.5rem) !important;
+  }
+
+  /* 11. Native Mobile Bottom Sheet / Drawer for More Menu */
+  .mobile-drawer-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(4px);
+    z-index: 2000;
+    justify-content: flex-end;
+    align-items: flex-end;
+    flex-direction: column;
+  }
+
+  .mobile-drawer-overlay.open {
+    display: flex !important;
+  }
+
+  .mobile-drawer-content {
+    background: #ffffff;
+    width: 100%;
+    max-height: 85vh;
+    border-top-left-radius: 22px;
+    border-top-right-radius: 22px;
+    padding: 1rem 1.15rem 2rem;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.35);
+    overflow-y: auto;
+    animation: drawerSlideUp 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+  }
+
+  @keyframes drawerSlideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .drawer-drag-handle {
+    width: 44px;
+    height: 4px;
+    background: #cbd5e1;
+    border-radius: 2px;
+    margin: 0 auto 0.85rem;
+  }
+
+  .drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .drawer-title {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .drawer-close-btn {
+    background: #f1f5f9;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+  }
+
+  .drawer-creator-ribbon {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1px solid #f59e0b;
+    color: #92400e;
+    padding: 0.45rem 0.75rem;
+    border-radius: var(--radius-sm);
+    text-align: center;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  .drawer-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.65rem;
+  }
+
+  .drawer-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 0.35rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    gap: 5px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+  }
+
+  .drawer-tile:active {
+    transform: scale(0.94);
+    background: #e2e8f0;
+  }
+
+  .drawer-tile-icon {
+    font-size: 1.55rem;
+    line-height: 1;
+  }
+
+  .drawer-tile-label {
+    font-size: 0.73rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.2;
+  }
+
+  .drawer-tile.highlight-school {
+    background: #eff6ff;
+    border-color: #93c5fd;
+  }
+
+  .drawer-tile.highlight-school .drawer-tile-label {
+    color: #1d4ed8;
+  }
+
+  .drawer-tile.highlight-cloud {
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+  }
+
+  .drawer-tile.highlight-cloud .drawer-tile-label {
+    color: #047857;
   }
 }
 

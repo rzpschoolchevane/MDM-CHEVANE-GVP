@@ -1434,6 +1434,10 @@ const app = {
             if (schoolBackup.initialStock) this.data.initialStock = schoolBackup.initialStock;
             if (schoolBackup.tasteRecords) this.data.tasteRecords = schoolBackup.tasteRecords;
             if (schoolBackup.settings) this.data.settings = Object.assign({}, this.data.settings, schoolBackup.settings);
+            if (schoolBackup.menus && Array.isArray(schoolBackup.menus)) this.data.menus = schoolBackup.menus;
+            if (schoolBackup.ingredients) this.data.ingredients = Object.assign({}, this.data.ingredients, schoolBackup.ingredients);
+            if (Array.isArray(schoolBackup.stockReceipts)) this.data.stockReceipts = schoolBackup.stockReceipts;
+            if (Array.isArray(schoolBackup.damagedStock)) this.data.damagedStock = schoolBackup.damagedStock;
           }
         } catch(e) {}
       }
@@ -1962,6 +1966,12 @@ const app = {
     // Window Print setup for A4 fit
     window.addEventListener('beforeprint', () => {
       const printSlip = document.getElementById('printSlipContainer');
+
+      // CRITICAL: Retain stock report or kitchen slip inside printSlipContainer! Do not clear innerHTML!
+      if (document.body.classList.contains('print-stock-report') || document.body.classList.contains('print-slip')) {
+        return;
+      }
+
       if (this.currentTab === 'formb' || document.body.classList.contains('print-formb')) {
         if (printSlip) printSlip.innerHTML = '';
         document.body.classList.remove('print-landscape', 'print-monthly', 'print-yearly', 'print-register', 'print-slip', 'print-taste', 'printing-taste');
@@ -1978,8 +1988,6 @@ const app = {
         if (printSlip) printSlip.innerHTML = '';
         document.body.classList.remove('print-portrait', 'print-formb', 'print-monthly', 'print-register', 'print-slip', 'print-taste', 'printing-taste');
         document.body.classList.add('print-yearly', 'print-landscape');
-      } else if (document.body.classList.contains('print-slip')) {
-        // Handled specifically by printDailySlip
       } else {
         if (printSlip) printSlip.innerHTML = '';
         document.body.classList.remove('print-portrait', 'print-formb', 'print-slip', 'print-taste', 'printing-taste');
@@ -1988,7 +1996,18 @@ const app = {
     });
 
     window.addEventListener('afterprint', () => {
-      document.body.classList.remove('print-formb', 'print-taste', 'printing-taste', 'print-portrait', 'print-landscape', 'print-monthly', 'print-yearly', 'print-register', 'print-slip');
+      document.body.classList.remove(
+        'print-stock-report',
+        'print-formb',
+        'print-taste',
+        'printing-taste',
+        'print-portrait',
+        'print-landscape',
+        'print-monthly',
+        'print-yearly',
+        'print-register',
+        'print-slip'
+      );
       const printSlip = document.getElementById('printSlipContainer');
       if (printSlip) printSlip.innerHTML = '';
     });
@@ -5120,7 +5139,807 @@ const app = {
     this.saveState();
     this.closeEditOldStockModal();
     this.refreshAllViews();
-    this.showToast('✅ मागील शिल्लक धान्य साठा (Old Stock) यशस्वीरित्या जतन झाला!', 'success');
+    this.showToast('✅ 1 एप्रिल रोजी शिल्लक साठा यशस्वीरित्या जतन झाला!', 'success');
+  },
+
+  // =========================================================================
+  // STOCK REPORTS PRINT CENTER (धान्य व किराणा साठा अहवाल प्रिंट)
+  // =========================================================================
+
+  /**
+   * Helper: Compute all-time stock breakdown for live reporting
+   */
+  computeAllTimeStockBreakdown() {
+    const targetOrder = ['rice', 'moong_dal', 'tur_dal', 'masoor_dal', 'matki', 'moong', 'chavali', 'chana', 'vatana', 'cumin', 'mustard', 'turmeric', 'chilli', 'oil', 'salt', 'masala', 'soyavadi'];
+    const initial = {};
+    const received = {};
+    const available = {};
+    const cooking = {};
+    const damaged = {};
+    const totalOut = {};
+    const balance = {};
+
+    targetOrder.forEach(k => {
+      initial[k] = parseFloat(this.data.initialStock[k]) || 0;
+      received[k] = 0;
+      cooking[k] = 0;
+      damaged[k] = 0;
+    });
+
+    (this.data.stockReceipts || []).forEach(r => {
+      Object.keys(r.items || {}).forEach(k => {
+        if (received[k] !== undefined) {
+          received[k] += (parseFloat(r.items[k]) || 0);
+        }
+      });
+    });
+
+    Object.keys(this.data.records || {}).forEach(d => {
+      const rec = this.data.records[d];
+      if (rec && !rec.isHoliday && rec.children > 0) {
+        Object.keys(rec.quantities || {}).forEach(k => {
+          if (cooking[k] !== undefined) {
+            cooking[k] += (parseFloat(rec.quantities[k]) || 0);
+          }
+        });
+      }
+    });
+
+    (this.data.damagedStock || []).forEach(d => {
+      Object.keys(d.items || {}).forEach(k => {
+        if (damaged[k] !== undefined) {
+          damaged[k] += (parseFloat(d.items[k]) || 0);
+        }
+      });
+    });
+
+    targetOrder.forEach(k => {
+      available[k] = +(initial[k] + received[k]).toFixed(4);
+      totalOut[k] = +(cooking[k] + damaged[k]).toFixed(4);
+      balance[k] = +(available[k] - totalOut[k]).toFixed(4);
+    });
+
+    return { initial, received, available, cooking, damaged, totalOut, balance };
+  },
+
+  /**
+   * Helper: Format ISO date (YYYY-MM-DD) to printable format (DD/MM/YYYY)
+   */
+  formatPrintDate(isoStr) {
+    if (!isoStr) return '—';
+    const parts = isoStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return isoStr;
+  },
+
+  /**
+   * Helper: Get Marathi month name with year (e.g. सप्टेंबर 2026)
+   */
+  getStockMonthNameMarathi(yearMonth) {
+    if (!yearMonth) return '';
+    const [y, m] = yearMonth.split('-');
+    const months = ["जानेवारी", "फेब्रुवारी", "मार्च", "एप्रिल", "मे", "जून", "जुलै", "ऑगस्ट", "सप्टेंबर", "ऑक्टोबर", "नोव्हेंबर", "डिसेंबर"];
+    const mIdx = parseInt(m, 10) - 1;
+    return `${months[mIdx] || m} ${y}`;
+  },
+
+  /**
+   * Generate official HTML for Closing Stock Balance Report (शिल्लक धान्य साठा पत्रक)
+   */
+  generateStockBalanceHtml(yearMonth = null) {
+    const s = this.data.settings || {};
+    const isMonthly = !!yearMonth && yearMonth !== 'live';
+    const periodTitle = isMonthly 
+      ? `माहे ${this.getStockMonthNameMarathi(yearMonth)} अखेर (${yearMonth})` 
+      : `चालू आजअखेर (${this.formatPrintDate(new Date().toISOString().substring(0, 10))})`;
+
+    const targetOrder = ['rice', 'moong_dal', 'tur_dal', 'masoor_dal', 'matki', 'moong', 'chavali', 'chana', 'vatana', 'cumin', 'mustard', 'turmeric', 'chilli', 'oil', 'salt', 'masala', 'soyavadi'];
+    
+    let initialMap, receivedMap, availMap, consumedMap, damagedMap, balanceMap;
+
+    if (isMonthly) {
+      const summary = this.computeMonthlyStock(yearMonth);
+      initialMap = summary.opening;
+      receivedMap = summary.received;
+      availMap = summary.totalAvailable;
+      consumedMap = summary.cookingConsumed;
+      damagedMap = summary.damaged;
+      balanceMap = summary.closing;
+    } else {
+      const breakdown = this.computeAllTimeStockBreakdown();
+      initialMap = breakdown.initial;
+      receivedMap = breakdown.received;
+      availMap = breakdown.available;
+      consumedMap = breakdown.cooking;
+      damagedMap = breakdown.damaged;
+      balanceMap = breakdown.balance;
+    }
+
+    let totGrainsOpening = 0, totGrainsRec = 0, totGrainsAvail = 0, totGrainsUse = 0, totGrainsDmg = 0, totGrainsBal = 0;
+    let totOtherOpening = 0, totOtherRec = 0, totOtherAvail = 0, totOtherUse = 0, totOtherDmg = 0, totOtherBal = 0;
+
+    let rowsHtml = '';
+    targetOrder.forEach((key, idx) => {
+      const ing = this.data.ingredients[key] || { name: key, category: 'other', unit: 'kg' };
+      const op = initialMap[key] || 0;
+      const rec = receivedMap[key] || 0;
+      const av = availMap[key] || 0;
+      const used = consumedMap[key] || 0;
+      const dmg = damagedMap[key] || 0;
+      const bal = balanceMap[key] || 0;
+
+      const isGrain = (ing.category === 'grain' || ing.category === 'pulse');
+      if (isGrain) {
+        totGrainsOpening += op; totGrainsRec += rec; totGrainsAvail += av; totGrainsUse += used; totGrainsDmg += dmg; totGrainsBal += bal;
+      } else {
+        totOtherOpening += op; totOtherRec += rec; totOtherAvail += av; totOtherUse += used; totOtherDmg += dmg; totOtherBal += bal;
+      }
+
+      const catLabel = ing.category === 'grain' ? 'मुख्य धान्य' : (ing.category === 'pulse' ? 'कडधान्य/डाळ' : (key === 'oil' ? 'खाद्यतेल' : 'किराणा/मसाले'));
+      
+      let statusText = 'मुबलक / पुरेसा';
+      let statusBg = '#f0fdf4';
+      let statusColor = '#166534';
+
+      if (bal < 0) {
+        statusText = '⚠️ अपुरा साठा (ऋण)';
+        statusBg = '#fef2f2';
+        statusColor = '#991b1b';
+      } else if (bal === 0) {
+        statusText = 'निरंक (0)';
+        statusBg = '#f1f5f9';
+        statusColor = '#475569';
+      } else if (bal < (ing.defaultRate * (s.pat || 8) * 3)) {
+        statusText = 'कमी साठा';
+        statusBg = '#fffbeb';
+        statusColor = '#92400e';
+      }
+
+      rowsHtml += `
+        <tr style="${isGrain ? 'background:#fafafa;' : ''}">
+          <td style="text-align: center;">${idx + 1}</td>
+          <td><strong>${ing.name}</strong></td>
+          <td style="text-align: center; font-size: 8pt; color: #475569;">${catLabel}</td>
+          <td style="text-align: right;">${op.toFixed(3)}</td>
+          <td style="text-align: right; ${rec > 0 ? 'font-weight:700; color:#166534;' : ''}">${rec.toFixed(3)}</td>
+          <td style="text-align: right; font-weight: 600;">${av.toFixed(3)}</td>
+          <td style="text-align: right;">${used.toFixed(3)}</td>
+          <td style="text-align: right; ${dmg > 0 ? 'color:#b91c1c; font-weight:700;' : ''}">${dmg.toFixed(3)}</td>
+          <td style="text-align: right; font-weight: 800; font-size: 9.5pt; background: #ecfdf5; color: #064e3b;">${bal.toFixed(3)}</td>
+          <td style="text-align: center; font-size: 8pt; font-weight: 700; background: ${statusBg}; color: ${statusColor};">${statusText}</td>
+        </tr>
+      `;
+    });
+
+    return `
+      <div class="stock-printable-sheet">
+        <div class="stock-print-header">
+          <div class="stock-gov-title">महाराष्ट्र शासन - शालेय पोषण आहार योजना (PM POSHAN)</div>
+          <h2 class="stock-school-name">${s.schoolName || 'प्राथमिक शाळा'}</h2>
+          <div class="stock-school-meta">
+            UDISE: <strong>${s.udise || '—'}</strong> | केंद्र: <strong>${s.centre || '—'}</strong> | तालुका: <strong>${s.taluka || '—'}</strong> | जिल्हा: <strong>${s.district || '—'}</strong>
+          </div>
+          <div class="stock-report-badge">
+            📦 धान्य व किराणा शिल्लक साठा पत्रक / ताळेबंद नोंदवही - ${periodTitle}
+          </div>
+        </div>
+
+        <table class="stock-print-table">
+          <thead>
+            <tr>
+              <th style="width: 32px;">अ.क्र.</th>
+              <th style="text-align: left; min-width: 130px;">साहित्य / घटकाचे नाव</th>
+              <th style="width: 90px;">प्रकार</th>
+              <th style="width: 85px;">1 एप्रिल शिल्लक साठा (kg)</th>
+              <th style="width: 75px;">प्राप्त धान्य (kg)</th>
+              <th style="width: 75px;">एकूण उपलब्ध (kg)</th>
+              <th style="width: 75px;">वापरलेले (kg)</th>
+              <th style="width: 70px;">खराब/नासाडी (kg)</th>
+              <th style="width: 95px; background: #bbf7d0;">अखेर शिल्लक (kg)</th>
+              <th style="width: 100px;">साठा स्थिती / शेरा</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+          <tfoot>
+            <tr style="background: #f1f5f9; font-weight: 800;">
+              <td colspan="3" style="text-align: right;">एकूण मुख्य धान्य (तांदूळ + डाळी) :</td>
+              <td style="text-align: right;">${totGrainsOpening.toFixed(3)}</td>
+              <td style="text-align: right;">${totGrainsRec.toFixed(3)}</td>
+              <td style="text-align: right;">${totGrainsAvail.toFixed(3)}</td>
+              <td style="text-align: right;">${totGrainsUse.toFixed(3)}</td>
+              <td style="text-align: right; color:#b91c1c;">${totGrainsDmg.toFixed(3)}</td>
+              <td style="text-align: right; font-size: 10pt; color: #166534; background: #dcfce7;">${totGrainsBal.toFixed(3)}</td>
+              <td style="text-align: center; font-size: 8pt;">कि.ग्रॅ. मुख्य धान्य</td>
+            </tr>
+            <tr style="background: #f8fafc; font-weight: 700;">
+              <td colspan="3" style="text-align: right;">इतर किराणा, मसाले व तेल :</td>
+              <td style="text-align: right;">${totOtherOpening.toFixed(3)}</td>
+              <td style="text-align: right;">${totOtherRec.toFixed(3)}</td>
+              <td style="text-align: right;">${totOtherAvail.toFixed(3)}</td>
+              <td style="text-align: right;">${totOtherUse.toFixed(3)}</td>
+              <td style="text-align: right;">${totOtherDmg.toFixed(3)}</td>
+              <td style="text-align: right; font-size: 9.5pt; color: #1e3a8a;">${totOtherBal.toFixed(3)}</td>
+              <td style="text-align: center; font-size: 8pt;">कि.ग्रॅ. किराणा</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div class="stock-print-cert">
+          <strong>प्रमाणपत्र:</strong> प्रमाणित करण्यात येते की, वरीलप्रमाणे शालेय पोषण आहार योजनेतील धान्य व किराणा मालाचा प्रत्यक्ष शिल्लक साठा मोजणी करून नोंदवहीत अचूक नोंदवला असून तो वस्तुस्थितीनुसार व दप्तरी नोंदींनुसार अचूक आहे.
+        </div>
+
+        <div class="stock-print-signatures">
+          <div class="sign-box">
+            <div class="sign-space"></div>
+            <div>स्वयंपाकी / मदतनीस स्वाक्षरी</div>
+          </div>
+          <div class="sign-box">
+            <div class="sign-space"></div>
+            <div>शालेय व्यवस्थापन समिती (SMC) अध्यक्ष</div>
+          </div>
+          <div class="sign-box">
+            <div class="sign-space"></div>
+            <div>मुख्याध्यापक स्वाक्षरी व शिक्का</div>
+            <div style="font-size: 8.5pt; font-weight: normal;">${s.schoolName || ''}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Generate official HTML for Received Stock Inward Register (आलेले धान्य आवक नोंदवही)
+   */
+  generateStockReceiptsHtml(yearMonth = null) {
+    const s = this.data.settings || {};
+    const isMonthly = !!yearMonth && yearMonth !== 'live';
+    const periodTitle = isMonthly 
+      ? `माहे ${this.getStockMonthNameMarathi(yearMonth)} (${yearMonth})` 
+      : `आजपर्यंतची संपूर्ण आवक नोंद (All-Time Receipts)`;
+
+    const allReceipts = this.data.stockReceipts || [];
+    const filtered = isMonthly 
+      ? allReceipts.filter(r => r.date && r.date.startsWith(yearMonth))
+      : allReceipts;
+
+    // Sort by date ascending
+    filtered.sort((a, b) => (a.date > b.date ? 1 : -1));
+
+    let rowsHtml = '';
+    let grandTotalInwardKg = 0;
+    const itemTotals = {};
+
+    if (filtered.length === 0) {
+      rowsHtml = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 25px 10px; color: #64748b; font-style: italic;">
+            सदर निवडलेल्या कालावधीत (${periodTitle}) कोणतीही नवीन धान्य पावती / आवक नोंदवलेली नाही. (निरंक)
+          </td>
+        </tr>
+      `;
+    } else {
+      filtered.forEach((r, idx) => {
+        let receiptTotalKg = 0;
+        const detailsArr = [];
+
+        Object.keys(r.items || {}).forEach(k => {
+          const val = parseFloat(r.items[k]) || 0;
+          if (val > 0) {
+            receiptTotalKg += val;
+            itemTotals[k] = (itemTotals[k] || 0) + val;
+            const ingName = this.data.ingredients[k]?.name || k;
+            detailsArr.push(`<strong>${ingName}</strong>: ${val.toFixed(2)} kg`);
+          }
+        });
+
+        grandTotalInwardKg += receiptTotalKg;
+
+        rowsHtml += `
+          <tr>
+            <td style="text-align: center;">${idx + 1}</td>
+            <td style="text-align: center; font-weight: 700;">${this.formatPrintDate(r.date)}</td>
+            <td style="text-align: center; font-weight: 600;">${r.billNo || '—'}</td>
+            <td>${detailsArr.join(' | ') || '—'}</td>
+            <td style="text-align: right; font-weight: 800; color: #166534;">${receiptTotalKg.toFixed(3)}</td>
+            <td>${r.recordedBy || s.headmaster || 'मुख्याध्यापक'}</td>
+            <td style="text-align: center; vertical-align: middle;">
+              <div style="min-height: 18px; border-bottom: 0.75pt dashed #94a3b8; width: 85%; margin: 4px auto 0;"></div>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    const itemSummaries = Object.keys(itemTotals)
+      .map(k => `${this.data.ingredients[k]?.name || k}: <strong>${itemTotals[k].toFixed(2)} kg</strong>`)
+      .join(' | ');
+
+    return `
+      <div class="stock-printable-sheet">
+        <div class="stock-print-header">
+          <div class="stock-gov-title">महाराष्ट्र शासन - शालेय पोषण आहार योजना (PM POSHAN)</div>
+          <h2 class="stock-school-name">${s.schoolName || 'प्राथमिक शाळा'}</h2>
+          <div class="stock-school-meta">
+            UDISE: <strong>${s.udise || '—'}</strong> | केंद्र: <strong>${s.centre || '—'}</strong> | तालुका: <strong>${s.taluka || '—'}</strong> | जिल्हा: <strong>${s.district || '—'}</strong>
+          </div>
+          <div class="stock-report-badge badge-receipts">
+            🚚 धान्य आवक व पावती नोंदवही (Stock Inward / Receipts Register) - ${periodTitle}
+          </div>
+        </div>
+
+        <table class="stock-print-table">
+          <thead>
+            <tr>
+              <th style="width: 35px;">अ.क्र.</th>
+              <th style="width: 95px;">पावती दिनांक</th>
+              <th style="width: 105px;">पावती / चलन क्र.</th>
+              <th style="text-align: left;">प्राप्त झालेले धान्य तपशील व प्रमाण (कि.ग्रॅ.)</th>
+              <th style="width: 105px; text-align: right;">एकूण आवक (kg)</th>
+              <th style="width: 125px; text-align: left;">नोंदवणार / पुरवठादार</th>
+              <th style="width: 90px;">स्वाक्षरी</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+          ${filtered.length > 0 ? `
+          <tfoot>
+            <tr style="background: #f0fdf4; font-weight: 800;">
+              <td colspan="4" style="text-align: right;">एकूण कालावधीतील धान्य आवक (Grand Total Received) :</td>
+              <td style="text-align: right; color: #166534; font-size: 10pt;">${grandTotalInwardKg.toFixed(3)}</td>
+              <td colspan="2" style="font-size: 8.5pt; color: #15803d;">कि.ग्रॅ. एकूण आवक धान्य</td>
+            </tr>
+            ${itemSummaries ? `
+            <tr style="background: #ffffff; font-size: 8.5pt;">
+              <td colspan="7" style="padding: 6px 8px; color: #334155;">
+                <strong>घटकनिहाय एकूण आवक:</strong> ${itemSummaries}
+              </td>
+            </tr>` : ''}
+          </tfoot>
+          ` : ''}
+        </table>
+
+        <div class="stock-print-cert">
+          <strong>प्रमाणपत्र:</strong> प्रमाणित करण्यात येते की, वरीलप्रमाणे शालेय पोषण आहारासाठी प्राप्त झालेले धान्य व किराणा मालाची प्रत्यक्ष खात्री करून पावती व चलनानुसार नोंदवहीत अचूक नोंद करण्यात आली आहे.
+        </div>
+
+        <div class="stock-print-signatures">
+          <div class="sign-box">
+            <div class="sign-space"></div>
+            <div>धान्य स्वीकारणारा / स्वयंपाकी</div>
+          </div>
+          <div class="sign-box">
+            <div class="sign-space"></div>
+            <div>शालेय व्यवस्थापन समिती (SMC) प्रतिनिधी</div>
+          </div>
+          <div class="sign-box">
+            <div class="sign-space"></div>
+            <div>मुख्याध्यापक स्वाक्षरी व शिक्का</div>
+            <div style="font-size: 8.5pt; font-weight: normal;">${s.schoolName || ''}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Generate official HTML for Damaged / Spoiled Stock Register (खराब धान्य नोंदवही व पंचनामा)
+   */
+  generateDamagedStockHtml(yearMonth = null) {
+    const s = this.data.settings || {};
+    const isMonthly = !!yearMonth && yearMonth !== 'live';
+    const periodTitle = isMonthly 
+      ? `माहे ${this.getStockMonthNameMarathi(yearMonth)} (${yearMonth})` 
+      : `आजपर्यंतची संपूर्ण खराब धान्य नोंद (All-Time Log)`;
+
+    const allDmgs = this.data.damagedStock || [];
+    const filtered = isMonthly 
+      ? allDmgs.filter(d => d.date && d.date.startsWith(yearMonth))
+      : allDmgs;
+
+    filtered.sort((a, b) => (a.date > b.date ? 1 : -1));
+
+    let rowsHtml = '';
+    let grandTotalDmgKg = 0;
+    const itemTotals = {};
+
+    if (filtered.length === 0) {
+      rowsHtml = `
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 25px 10px; color: #64748b; font-style: italic;">
+            सदर निवडलेल्या कालावधीत (${periodTitle}) कोणतेही धान्य खराब / मुदत संपलेले किंवा नासाडी झालेले नाही. (निरंक)
+          </td>
+        </tr>
+      `;
+    } else {
+      filtered.forEach((d, idx) => {
+        let dmgTotalKg = 0;
+        const detailsArr = [];
+
+        Object.keys(d.items || {}).forEach(k => {
+          const val = parseFloat(d.items[k]) || 0;
+          if (val > 0) {
+            dmgTotalKg += val;
+            itemTotals[k] = (itemTotals[k] || 0) + val;
+            const ingName = this.data.ingredients[k]?.name || k;
+            detailsArr.push(`<strong>${ingName}</strong>: ${val.toFixed(2)} kg`);
+          }
+        });
+
+        grandTotalDmgKg += dmgTotalKg;
+
+        rowsHtml += `
+          <tr>
+            <td style="text-align: center;">${idx + 1}</td>
+            <td style="text-align: center; font-weight: 700;">${this.formatPrintDate(d.date)}</td>
+            <td><strong style="color: #92400e;">${d.reason || 'खराब धान्य'}</strong></td>
+            <td>${detailsArr.join(' | ') || '—'}</td>
+            <td style="text-align: right; font-weight: 800; color: #b91c1c;">${dmgTotalKg.toFixed(3)}</td>
+            <td>${d.recordedBy || s.headmaster || 'मुख्याध्यापक'}</td>
+            <td style="text-align: center; vertical-align: middle;">
+              <div style="min-height: 18px; border-bottom: 0.75pt dashed #94a3b8; width: 85%; margin: 4px auto 0;"></div>
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    const itemSummaries = Object.keys(itemTotals)
+      .map(k => `${this.data.ingredients[k]?.name || k}: <strong>${itemTotals[k].toFixed(2)} kg</strong>`)
+      .join(' | ');
+
+    return `
+      <div class="stock-printable-sheet">
+        <div class="stock-print-header">
+          <div class="stock-gov-title">महाराष्ट्र शासन - शालेय पोषण आहार योजना (PM POSHAN)</div>
+          <h2 class="stock-school-name">${s.schoolName || 'प्राथमिक शाळा'}</h2>
+          <div class="stock-school-meta">
+            UDISE: <strong>${s.udise || '—'}</strong> | केंद्र: <strong>${s.centre || '—'}</strong> | तालुका: <strong>${s.taluka || '—'}</strong> | जिल्हा: <strong>${s.district || '—'}</strong>
+          </div>
+          <div class="stock-report-badge badge-damaged">
+            ⚠️ खराब / मुदत संपलेले / नासाडी धान्य नोंदवही व पंचनामा अहवाल - ${periodTitle}
+          </div>
+        </div>
+
+        <table class="stock-print-table">
+          <thead>
+            <tr style="background: #fef3c7;">
+              <th style="width: 35px;">अ.क्र.</th>
+              <th style="width: 95px;">नोंद दिनांक</th>
+              <th style="width: 155px; text-align: left;">कारण / पंचनामा क्र. / शेरा</th>
+              <th style="text-align: left;">खराब झालेले धान्य व प्रमाण (कि.ग्रॅ.)</th>
+              <th style="width: 105px; text-align: right;">एकूण नासाडी (kg)</th>
+              <th style="width: 125px; text-align: left;">तपासणी अधिकारी / नोंदवणार</th>
+              <th style="width: 90px;">स्वाक्षरी</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+          ${filtered.length > 0 ? `
+          <tfoot>
+            <tr style="background: #fffbeb; font-weight: 800;">
+              <td colspan="4" style="text-align: right;">एकूण खराब / नासाडी धान्य (Total Damaged Quantity) :</td>
+              <td style="text-align: right; color: #b91c1c; font-size: 10pt;">${grandTotalDmgKg.toFixed(3)}</td>
+              <td colspan="2" style="font-size: 8.5pt; color: #b45309;">कि.ग्रॅ. नासाडी धान्य</td>
+            </tr>
+            ${itemSummaries ? `
+            <tr style="background: #ffffff; font-size: 8.5pt;">
+              <td colspan="7" style="padding: 6px 8px; color: #78350f;">
+                <strong>घटकनिहाय नासाडी तपशील:</strong> ${itemSummaries}
+              </td>
+            </tr>` : ''}
+          </tfoot>
+          ` : ''}
+        </table>
+
+        <div class="stock-print-cert" style="background: #fffbeb; padding: 6px 10px; border: 1px dashed #f59e0b; border-radius: 4px;">
+          <strong>पंचनामा शेरा:</strong> उपरोक्त नमूद केलेले धान्य वरील कारणांमुळे मानवी आहारात वापरण्यायोग्य न राहिल्याने प्रत्यक्ष पाहणी व पंचनामा करून शासकीय नियमांनुसार विल्हेवाट लावून साठ्यातून वजा करण्यात आले असून नोंदवहीत अचूक नोंद केली आहे.
+        </div>
+
+        <div class="stock-print-signatures">
+          <div class="sign-box">
+            <div class="sign-space"></div>
+            <div>स्वयंपाकी / मदतनीस स्वाक्षरी</div>
+          </div>
+          <div class="sign-box">
+            <div class="sign-space"></div>
+            <div>ग्रामपंचायत / SMC प्रतिनिधी स्वाक्षरी</div>
+          </div>
+          <div class="sign-box">
+            <div class="sign-space"></div>
+            <div>मुख्याध्यापक स्वाक्षरी व शिक्का</div>
+            <div style="font-size: 8.5pt; font-weight: normal;">${s.schoolName || ''}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  /**
+   * Helper: Trigger Browser Print for any Stock HTML Report
+   */
+  triggerPrintReport(htmlContent, orientation = 'portrait') {
+    let printContainer = document.getElementById('printSlipContainer');
+    if (!printContainer) {
+      printContainer = document.createElement('div');
+      printContainer.id = 'printSlipContainer';
+      printContainer.className = 'print-only-slip';
+      document.body.appendChild(printContainer);
+    }
+
+    printContainer.innerHTML = htmlContent;
+    this.setPrintPageOrientation(orientation, 'A4', orientation === 'landscape' ? '4mm 4mm 4mm 4mm' : '6mm 7mm 6mm 7mm');
+
+    document.body.classList.remove('print-landscape', 'print-monthly', 'print-yearly', 'print-register', 'print-legal', 'print-slip', 'print-formb', 'print-taste', 'printing-taste');
+    document.body.classList.add('print-stock-report', orientation === 'landscape' ? 'print-landscape' : 'print-portrait');
+
+    let cleanedUp = false;
+    const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      document.body.classList.remove('print-stock-report', 'print-landscape', 'print-portrait');
+      if (printContainer) printContainer.innerHTML = '';
+      window.removeEventListener('afterprint', cleanup);
+    };
+
+    window.addEventListener('afterprint', cleanup, { once: true });
+
+    setTimeout(() => {
+      window.print();
+      // Fallback cleanup in case afterprint does not fire in mobile or embedded browser
+      setTimeout(cleanup, 2000);
+    }, 150);
+  },
+
+  /**
+   * Direct 1-Click Print: Stock Balance Register (शिल्लक धान्य साठा पत्रक)
+   */
+  printStockBalanceReport(yearMonth = null) {
+    const html = this.generateStockBalanceHtml(yearMonth);
+    this.triggerPrintReport(html, 'landscape');
+  },
+
+  /**
+   * Direct 1-Click Print: Stock Receipts Register (आलेले धान्य आवक नोंदवही)
+   */
+  printStockReceiptsReport(yearMonth = null) {
+    const html = this.generateStockReceiptsHtml(yearMonth);
+    this.triggerPrintReport(html, 'portrait');
+  },
+
+  /**
+   * Direct 1-Click Print: Damaged Stock Register (खराब धान्य नोंदवही व पंचनामा)
+   */
+  printDamagedStockReport(yearMonth = null) {
+    const html = this.generateDamagedStockHtml(yearMonth);
+    this.triggerPrintReport(html, 'portrait');
+  },
+
+  /**
+   * Direct 1-Click Print: Combined Dossier of All 3 Stock Reports
+   */
+  printCombinedStockReports(yearMonth = null) {
+    const html1 = this.generateStockBalanceHtml(yearMonth);
+    const html2 = this.generateStockReceiptsHtml(yearMonth);
+    const html3 = this.generateDamagedStockHtml(yearMonth);
+
+    const combined = `
+      <div class="page-break">${html1}</div>
+      <div class="page-break">${html2}</div>
+      <div>${html3}</div>
+    `;
+
+    this.triggerPrintReport(combined, 'landscape');
+  },
+
+  /**
+   * Open Stock Report in a Clean New Browser Window / Tab (100% reliable for Mobile PDF save & Print)
+   */
+  openStockReportInNewWindow() {
+    const mode = document.getElementById('stockPrintPeriodMode')?.value || 'live';
+    const monthKey = mode === 'month' ? document.getElementById('stockPrintMonthPicker')?.value : null;
+
+    let content = '';
+    let orientation = 'landscape';
+    let reportTitle = 'शिल्लक साठा पत्रक';
+
+    if (this.currentStockPrintType === 'shillak') {
+      content = this.generateStockBalanceHtml(monthKey);
+      orientation = 'landscape';
+      reportTitle = 'शिल्लक धान्य साठा पत्रक (A4 Landscape)';
+    } else if (this.currentStockPrintType === 'aalele') {
+      content = this.generateStockReceiptsHtml(monthKey);
+      orientation = 'portrait';
+      reportTitle = 'आलेले धान्य आवक नोंदवही (A4 Portrait)';
+    } else if (this.currentStockPrintType === 'kharab') {
+      content = this.generateDamagedStockHtml(monthKey);
+      orientation = 'portrait';
+      reportTitle = 'खराब धान्य नोंद व पंचनामा अहवाल (A4 Portrait)';
+    } else if (this.currentStockPrintType === 'all') {
+      content = `
+        <div class="stock-printable-sheet page-break">${this.generateStockBalanceHtml(monthKey)}</div>
+        <div class="stock-printable-sheet page-break">${this.generateStockReceiptsHtml(monthKey)}</div>
+        <div class="stock-printable-sheet">${this.generateDamagedStockHtml(monthKey)}</div>
+      `;
+      orientation = 'landscape';
+      reportTitle = 'तिन्ही साठा अहवाल संच (Combined Dossier)';
+    }
+
+    const margin = (orientation === 'landscape') ? '4mm 4mm 4mm 4mm' : '6mm 7mm 6mm 7mm';
+    const newWin = window.open('', '_blank');
+    if (!newWin) {
+      this.showToast('कृपया ब्राऊझर पॉप-अपला परवानगी द्या (Allow Pop-up).', 'warning');
+      return;
+    }
+
+    newWin.document.open();
+    newWin.document.write(`
+      <!DOCTYPE html>
+      <html lang="mr">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${reportTitle} - ${this.data.settings.schoolName || 'शालेय पोषण आहार'}</title>
+        <link rel="stylesheet" href="styles.css">
+        <style>
+          @page { size: A4 ${orientation} !important; margin: ${margin} !important; }
+          body { background: #ffffff !important; color: #000000 !important; margin: 0; padding: 12px; font-family: 'Segoe UI', Arial, sans-serif; }
+          .screen-action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0f172a;
+            color: #ffffff;
+            padding: 10px 16px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          }
+          .screen-action-bar button {
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 14px;
+            border: none;
+          }
+          .btn-print-now {
+            background: #16a34a;
+            color: #ffffff;
+          }
+          .btn-close-win {
+            background: #475569;
+            color: #ffffff;
+          }
+          @media print {
+            .screen-action-bar { display: none !important; }
+            body { padding: 0 !important; margin: 0 !important; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="screen-action-bar">
+          <div>
+            <strong>🖨️ ${reportTitle}</strong> | ${this.data.settings.schoolName || 'MDM App'}
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-print-now" onclick="window.print()">🖨️ A4 प्रिंट काढा / PDF सेव्ह करा</button>
+            <button class="btn-close-win" onclick="window.close()">❌ बंद करा</button>
+          </div>
+        </div>
+        ${content}
+      </body>
+      </html>
+    `);
+    newWin.document.close();
+  },
+
+  /**
+   * Modal Stock Print Center controls
+   */
+  currentStockPrintType: 'shillak',
+
+  openStockPrintModal(defaultType = 'shillak') {
+    // Immediately dismiss mobile drawer if open
+    const drawer = document.getElementById('mobileMoreDrawer');
+    if (drawer) {
+      drawer.classList.remove('open');
+      drawer.style.display = 'none';
+    }
+
+    const modal = document.getElementById('stockPrintModal');
+    const monthPicker = document.getElementById('stockPrintMonthPicker');
+    if (!modal) return;
+
+    if (monthPicker && !monthPicker.value) {
+      monthPicker.value = new Date().toISOString().substring(0, 7);
+    }
+
+    this.setStockPrintType(defaultType);
+    modal.style.display = 'flex';
+    modal.style.zIndex = '100005';
+  },
+
+  closeStockPrintModal() {
+    const modal = document.getElementById('stockPrintModal');
+    if (modal) modal.style.display = 'none';
+  },
+
+  setStockPrintType(type) {
+    this.currentStockPrintType = type || 'shillak';
+    document.querySelectorAll('#stockPrintTypeGroup .stock-type-pill').forEach(pill => {
+      pill.classList.toggle('active', pill.dataset.type === this.currentStockPrintType);
+    });
+
+    const badge = document.getElementById('stockPrintOrientationBadge');
+    if (badge) {
+      if (this.currentStockPrintType === 'shillak' || this.currentStockPrintType === 'all') {
+        badge.textContent = 'A4 Landscape (आडवे)';
+        badge.className = 'badge badge-primary';
+      } else {
+        badge.textContent = 'A4 Portrait (उभे)';
+        badge.className = 'badge badge-success';
+      }
+    }
+
+    this.updateStockPrintPreview();
+  },
+
+  onStockPeriodModeChange() {
+    const mode = document.getElementById('stockPrintPeriodMode')?.value;
+    const picker = document.getElementById('stockPrintMonthPicker');
+    if (picker) {
+      picker.style.display = (mode === 'month') ? 'inline-block' : 'none';
+      if (mode === 'month' && !picker.value) {
+        picker.value = new Date().toISOString().substring(0, 7);
+      }
+    }
+    this.updateStockPrintPreview();
+  },
+
+  updateStockPrintPreview() {
+    const container = document.getElementById('stockPrintPreviewContainer');
+    if (!container) return;
+
+    const mode = document.getElementById('stockPrintPeriodMode')?.value || 'live';
+    const monthKey = mode === 'month' ? document.getElementById('stockPrintMonthPicker')?.value : null;
+
+    let content = '';
+    if (this.currentStockPrintType === 'shillak') {
+      content = this.generateStockBalanceHtml(monthKey);
+    } else if (this.currentStockPrintType === 'aalele') {
+      content = this.generateStockReceiptsHtml(monthKey);
+    } else if (this.currentStockPrintType === 'kharab') {
+      content = this.generateDamagedStockHtml(monthKey);
+    } else if (this.currentStockPrintType === 'all') {
+      content = `
+        <div class="mb-4">${this.generateStockBalanceHtml(monthKey)}</div>
+        <hr style="border-top: 2px dashed #94a3b8; margin: 25px 0;">
+        <div class="mb-4">${this.generateStockReceiptsHtml(monthKey)}</div>
+        <hr style="border-top: 2px dashed #94a3b8; margin: 25px 0;">
+        <div>${this.generateDamagedStockHtml(monthKey)}</div>
+      `;
+    }
+
+    container.innerHTML = content;
+  },
+
+  printCurrentModalStockReport() {
+    const mode = document.getElementById('stockPrintPeriodMode')?.value || 'live';
+    const monthKey = mode === 'month' ? document.getElementById('stockPrintMonthPicker')?.value : null;
+
+    if (this.currentStockPrintType === 'shillak') {
+      this.printStockBalanceReport(monthKey);
+    } else if (this.currentStockPrintType === 'aalele') {
+      this.printStockReceiptsReport(monthKey);
+    } else if (this.currentStockPrintType === 'kharab') {
+      this.printDamagedStockReport(monthKey);
+    } else if (this.currentStockPrintType === 'all') {
+      this.printCombinedStockReports(monthKey);
+    }
   },
 
   renderOldStockInSettings() {
@@ -5152,7 +5971,7 @@ const app = {
 
     this.saveState();
     this.refreshAllViews();
-    this.showToast('✅ सेटिंग्जमधून मागील शिल्लक साठा सर्व पानांवर यशस्वीरित्या जतन झाला!', 'success');
+    this.showToast('✅ सेटिंग्जमधून 1 एप्रिल रोजी शिल्लक साठा सर्व पानांवर यशस्वीरित्या जतन झाला!', 'success');
   },
 
   // =========================================================================
@@ -5203,15 +6022,53 @@ const app = {
   },
 
   exportJsonBackup() {
-    const jsonStr = JSON.stringify(this.data, null, 2);
+    // 1. Flush any uncommitted inputs from settings
+    if (typeof this.autoSaveSchoolSettings === 'function') {
+      this.autoSaveSchoolSettings();
+    }
+
+    const currentUdise = this.getActiveUdise();
+    const schoolName = (this.data && this.data.settings && this.data.settings.schoolName) ? this.data.settings.schoolName : 'शाळा';
+
+    // 2. Prepare comprehensive backup payload
+    const backupPayload = {
+      app: "PM POSHAN शालेय पोषण आहार प्रणाली",
+      appCreator: "श्री गणेश विलास पष्टे",
+      version: "2.0",
+      backupType: "FULL_MDM_DATA_BACKUP",
+      exportedAt: new Date().toISOString(),
+      udise: currentUdise,
+      schoolName: schoolName,
+      // 1. School & Officers Settings (शाळा व अधिकाऱ्यांचे संपूर्ण तपशील)
+      settings: Object.assign({}, this.data.settings || {}),
+      // 2. 1st April Opening Stock (1 एप्रिल रोजी शिल्लक साठा)
+      initialStock: Object.assign({}, this.data.initialStock || {}),
+      // 3. Menus & Timetable (सेटिंग्जमधील सर्व मेनू व वेळापत्रक)
+      menus: Array.isArray(this.data.menus) ? JSON.parse(JSON.stringify(this.data.menus)) : [],
+      // 4. Ingredient Rules & Grammage Rates (मेन्यू प्रमाण, दर व घटक नावे)
+      ingredients: JSON.parse(JSON.stringify(this.data.ingredients || {})),
+      // 5. Stock Receipts (आलेले धान्य आवक नोंदी)
+      stockReceipts: Array.isArray(this.data.stockReceipts) ? JSON.parse(JSON.stringify(this.data.stockReceipts)) : [],
+      // 6. Damaged / Spoiled Stock (खराब / नासाडी धान्य नोंदी)
+      damagedStock: Array.isArray(this.data.damagedStock) ? JSON.parse(JSON.stringify(this.data.damagedStock)) : [],
+      // 7. Daily Records (दैनंदिन पोषण आहार नोंदी)
+      records: Object.assign({}, this.data.records || {}),
+      // 8. Taste Register (चव नोंदवही)
+      tasteRecords: Object.assign({}, this.data.tasteRecords || {}),
+      // 9. Custom Demands (प्रपत्र ब मागणी)
+      customDemands: Object.assign({}, this.data.customDemands || {})
+    };
+
+    const jsonStr = JSON.stringify(backupPayload, null, 2);
     const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `MDM_Backup_${this.data.settings.schoolName.replace(/\s+/g, '_')}_${new Date().toISOString().substring(0, 10)}.json`;
+    const cleanName = schoolName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\u0900-\u097F]/g, '');
+    a.download = `MDM_Full_Backup_${cleanName}_${currentUdise}_${new Date().toISOString().substring(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    this.showToast('डेटा बॅकअप फाईल सेव्ह झाली.', 'success');
+    this.showToast('💾 संपूर्ण डेटा बॅकअप फाईल (शाळा, 1 एप्रिल साठा, मेन्यू, दर व दैनिक नोंदी) सेव्ह झाली.', 'success');
   },
 
   handleJsonRestore(event) {
@@ -5222,14 +6079,90 @@ const app = {
     reader.onload = (e) => {
       try {
         const parsed = JSON.parse(e.target.result);
-        if (parsed.settings && parsed.records) {
-          this.data = parsed;
-          this.saveState();
-          this.showToast('✅ बॅकअप फाईल यशस्वीरित्या रिस्टोअर झाली!', 'success');
-          this.init();
-        } else {
-          alert('अवैध बॅकअप फाईल फॉरमॅट.');
+        if (!parsed || typeof parsed !== 'object') {
+          alert('❌ अवैध बॅकअप फाईल फॉरमॅट! कृपया योग्य .json बॅकअप फाईल निवडा.');
+          return;
         }
+
+        const hasSettings = !!(parsed.settings && typeof parsed.settings === 'object');
+        const hasRecords = !!(parsed.records && typeof parsed.records === 'object');
+        const hasInitialStock = !!(parsed.initialStock && typeof parsed.initialStock === 'object');
+        const hasMenus = !!(parsed.menus && Array.isArray(parsed.menus));
+        const hasIngredients = !!(parsed.ingredients && typeof parsed.ingredients === 'object');
+
+        if (!hasSettings && !hasRecords && !hasInitialStock) {
+          alert('❌ या फाईलमध्ये शालेय पोषण आहाराचा वैध डेटा आढळला नाही.');
+          return;
+        }
+
+        // 1. Restore School Settings & UDISE (शाळा व अधिकारी तपशील)
+        if (hasSettings) {
+          this.data.settings = Object.assign({}, this.data.settings, parsed.settings);
+          if (parsed.settings.udise && String(parsed.settings.udise).trim().length === 11) {
+            const cleanU = String(parsed.settings.udise).trim();
+            this.data.settings.udise = cleanU;
+            localStorage.setItem(this.ACTIVE_UDISE_STORAGE_KEY, cleanU);
+          }
+          this.registerSchool(this.data.settings);
+        }
+
+        // 2. Restore 1st April Opening Stock (1 एप्रिल रोजी शिल्लक साठा)
+        if (hasInitialStock) {
+          this.data.initialStock = Object.assign({}, this.data.initialStock, parsed.initialStock);
+        }
+
+        // 3. Restore Menus & Timetable (सेटिंग्जमधील सर्व मेनू)
+        if (hasMenus && parsed.menus.length > 0) {
+          this.data.menus = parsed.menus;
+        }
+
+        // 4. Restore Ingredient Rules & Grammage Rates (मेन्यू प्रमाण, घटक दर व नावे)
+        if (hasIngredients) {
+          this.data.ingredients = Object.assign({}, this.data.ingredients, parsed.ingredients);
+        }
+
+        // 5. Restore Received Stock Receipts (आलेले धान्य नोंदी)
+        if (Array.isArray(parsed.stockReceipts)) {
+          this.data.stockReceipts = parsed.stockReceipts;
+        }
+
+        // 6. Restore Damaged Stock (खराब / नासाडी धान्य नोंदी)
+        if (Array.isArray(parsed.damagedStock)) {
+          this.data.damagedStock = parsed.damagedStock;
+        }
+
+        // 7. Restore Daily Records (दैनंदिन पोषण आहार नोंदी)
+        if (hasRecords) {
+          this.data.records = parsed.records;
+        }
+
+        // 8. Restore Taste Register (चव नोंदवही)
+        if (parsed.tasteRecords && typeof parsed.tasteRecords === 'object') {
+          this.data.tasteRecords = parsed.tasteRecords;
+        }
+
+        // 9. Restore Custom Demands (प्रपत्र ब मागणी)
+        if (parsed.customDemands && typeof parsed.customDemands === 'object') {
+          this.data.customDemands = parsed.customDemands;
+        }
+
+        // Save completely to storage keys (primary + safety backup)
+        this.saveState();
+
+        // Refresh all views, dropdowns, registered schools, and headers
+        this.updateHeaderMeta();
+        this.populateMenuDropdown();
+        this.renderManualGrainsCheckboxes();
+        this.renderRegisteredSchoolsList();
+        this.refreshAllViews();
+        this.renderCurrentTab();
+
+        const schoolTitle = (this.data.settings && this.data.settings.schoolName) ? this.data.settings.schoolName : 'शाळा';
+        const recCount = Object.keys(this.data.records || {}).length;
+        this.showToast(`✅ संपूर्ण बॅकअप यशस्वीरीत्या रिस्टोअर झाला! (${schoolTitle} - ${recCount} दैनिक नोंदी, 1 एप्रिल साठा, मेनू व प्रमाण)`, 'success');
+
+        // Reset file input so user can restore same file again if needed
+        event.target.value = '';
       } catch (err) {
         alert('JSON फाईल वाचताना त्रुटी: ' + err.message);
       }
@@ -5807,7 +6740,7 @@ const app = {
 
     this.saveState();
     this.refreshAllViews();
-    this.showToast('✅ सर्व सेटिंग्ज, नियम व मागील साठा सर्व पानांवर यशस्वीरित्या अपडेट झाले!', 'success');
+    this.showToast('✅ सर्व सेटिंग्ज, नियम व 1 एप्रिल रोजी शिल्लक साठा सर्व पानांवर यशस्वीरित्या अपडेट झाले!', 'success');
   },
 
   // =========================================================================
@@ -5896,6 +6829,9 @@ const app = {
   }
 
 };
+
+// Explicitly bind app to window for universal access across browsers, iframes and inline handlers
+window.app = app;
 
 // Initialize Application when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {

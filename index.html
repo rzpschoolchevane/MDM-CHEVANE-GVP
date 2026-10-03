@@ -750,6 +750,9 @@
               <button class="btn btn-success" onclick="app.exportExcelCurrentMonth()">
                 <span>📊 मूळ फॉरमॅट Excel डाऊनलोड (.xlsx)</span>
               </button>
+              <button class="btn btn-outline-success" onclick="app.openStockPrintModal()" title="साठा अहवाल (शिल्लक, आवक, खराब धान्य) प्रिंट करा">
+                <span>🖨️ साठा अहवाल प्रिंट</span>
+              </button>
               <button class="btn btn-primary" onclick="app.printMonthlyReport()">
                 <span>🖨️ A4 Landscape प्रिंट</span>
               </button>
@@ -884,6 +887,9 @@
               </button>
               <button class="btn btn-outline-warning" onclick="app.openAddDamagedStockModal()" title="या महिन्यासाठी खराब / नासाडी धान्य नोंदवा">
                 <span>⚠️ खराब धान्य नोंदवा</span>
+              </button>
+              <button class="btn btn-outline-success" onclick="app.openStockPrintModal()" title="साठा अहवाल (शिल्लक, आवक, खराब धान्य) प्रिंट करा">
+                <span>🖨️ साठा अहवाल प्रिंट</span>
               </button>
               <button class="btn btn-primary" onclick="app.printFormB()">
                 <span>🖨️ प्रपत्र ब प्रिंट (A4 Portrait / एका पानावर)</span>
@@ -1371,14 +1377,17 @@
           <div class="panel-header">
             <div class="panel-title-group">
               <h2 class="panel-title">धान्य व किराणा साठा व्यवस्थापन (Stock Management)</h2>
-              <p class="panel-desc">धान्य प्राप्त नोंद (Receipts), मागील शिल्लक, चालू वापर आणि शिल्लक साठ्याचे नियंत्रण</p>
+              <p class="panel-desc">धान्य प्राप्त नोंद (Receipts), 1 एप्रिल रोजी शिल्लक साठा, चालू वापर आणि शिल्लक साठ्याचे नियंत्रण</p>
             </div>
-            <div class="panel-actions">
+            <div class="panel-actions d-flex flex-wrap gap-2">
+              <button class="btn btn-success" onclick="app.openStockPrintModal()" style="font-weight: 700;">
+                <span>🖨️ साठा अहवाल प्रिंट केंद्र (Print Stock Reports)</span>
+              </button>
               <button class="btn btn-outline-primary" onclick="app.openEditOldStockModal()">
-                <span>✏️ मागील शिल्लक बदला (Edit Old Stock)</span>
+                <span>✏️ 1 एप्रिल रोजी शिल्लक साठा बदला (Edit 1st April Stock)</span>
               </button>
               <button class="btn btn-warning" onclick="app.openAddDamagedStockModal()" style="font-weight: 700;">
-                <span>⚠️ खराब / नासाडी धान्य नोंद (Damaged / Expired Stock)</span>
+                <span>⚠️ खराब / नासाडी धान्य नोंद (Damaged Stock)</span>
               </button>
               <button class="btn btn-primary" onclick="app.openAddStockModal()">
                 <span>➕ नवीन धान्य प्राप्त नोंद (Add Received Stock)</span>
@@ -1390,12 +1399,17 @@
           <div class="card mb-3 opening-stock-banner-card">
             <div class="card-body flex-between flex-wrap gap-2">
               <div>
-                <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 0.2rem;">📦 सुरुवातीची मागील शिल्लक (Opening / Old Stock)</h4>
-                <p class="form-hint" style="margin: 0;">शाळेचा मूळ सुरुवातीचा साठा तपासण्यासाठी व बदलण्यासाठी पुढील बटण वापरा.</p>
+                <h4 style="font-weight: 700; color: #1e293b; margin-bottom: 0.2rem;">📦 1 एप्रिल रोजी शिल्लक साठा (Opening Stock - 1st April)</h4>
+                <p class="form-hint" style="margin: 0;">शाळेचा 1 एप्रिल रोजी शिल्लक साठा तपासण्यासाठी व बदलण्यासाठी पुढील बटण वापरा.</p>
               </div>
-              <button class="btn btn-sm btn-outline-primary" onclick="app.openEditOldStockModal()">
-                <span>✏️ मागील शिल्लक संपादित करा (Edit)</span>
-              </button>
+              <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-sm btn-outline-success" onclick="app.printStockBalanceReport()" title="चालू शिल्लक साठा अधिकृत पत्रक प्रिंट करा" style="font-weight: 700;">
+                  <span>🖨️ शिल्लक धान्य प्रिंट</span>
+                </button>
+                <button class="btn btn-sm btn-outline-primary" onclick="app.openEditOldStockModal()">
+                  <span>✏️ 1 एप्रिल रोजी शिल्लक साठा संपादित करा (Edit)</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1406,9 +1420,16 @@
 
           <!-- Stock Receipts History -->
           <div class="card mt-4">
-            <div class="card-header flex-between">
-              <h3 class="card-title">प्राप्त धान्याच्या नोंदींचा इतिहास (Stock Receipt History)</h3>
-              <span class="badge badge-info" id="receiptCountBadge">0 नोंदी</span>
+            <div class="card-header flex-between flex-wrap gap-2">
+              <div class="d-flex align-items-center gap-2">
+                <h3 class="card-title">प्राप्त धान्याच्या नोंदींचा इतिहास (Stock Receipt History)</h3>
+                <span class="badge badge-info" id="receiptCountBadge">0 नोंदी</span>
+              </div>
+              <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-success" onclick="app.printStockReceiptsReport()" style="font-weight: 700;" title="आलेल्या धान्याची आवक पावती नोंदवही प्रिंट करा">
+                  <span>🖨️ आलेले धान्य प्रिंट (Print Receipts)</span>
+                </button>
+              </div>
             </div>
             <div class="card-body p-0">
               <div class="mobile-scroll-hint no-print">
@@ -1436,12 +1457,17 @@
 
           <!-- Damaged / Expired Stock History -->
           <div class="card mt-4" style="border-left: 4px solid #f59e0b;">
-            <div class="card-header flex-between" style="background: #fffbeb;">
+            <div class="card-header flex-between flex-wrap gap-2" style="background: #fffbeb;">
               <div>
                 <h3 class="card-title" style="color: #92400e;">⚠️ खराब / मुदत संपलेले / नासाडी धान्य नोंदी (Damaged & Expired Stock Log)</h3>
                 <p class="form-hint mb-0" style="color: #b45309; font-size: 0.8rem;">खराब झालेले धान्य संबंधित महिन्यातील एकूण वापर / शिजवलेल्या धान्यात आपोआप समाविष्ट केले जाते.</p>
               </div>
-              <span class="badge badge-warning" id="damagedCountBadge">0 नोंदी</span>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge badge-warning" id="damagedCountBadge">0 नोंदी</span>
+                <button class="btn btn-sm btn-outline-warning" style="color: #92400e; border-color: #f59e0b; font-weight: 700; background: #ffffff;" onclick="app.printDamagedStockReport()" title="खराब धान्य नोंदवही व पंचनामा अहवाल प्रिंट करा">
+                  <span>🖨️ खराब धान्य प्रिंट (Print Damaged)</span>
+                </button>
+              </div>
             </div>
             <div class="card-body p-0">
               <div class="table-responsive">
@@ -1549,6 +1575,34 @@
                   </button>
                   <button class="btn btn-outline-danger" onclick="app.clearAllDataAndStartZero()">
                     <span>🗑️ सर्व डेटा क्लिअर करा (Start Fresh from 0 Data)</span>
+                  </button>
+                </div>
+            <!-- Card 4: Print Stock Reports & Statements -->
+            <div class="card io-card full-width" style="border-left: 4px solid #16a34a;">
+              <div class="card-header flex-between" style="background: #f0fdf4;">
+                <div class="d-flex align-items-center gap-2">
+                  <span style="font-size: 1.3rem;">🖨️</span>
+                  <h3 class="card-title" style="color: #166534; margin: 0;">4. अधिकृत साठा अहवाल प्रिंट (Stock Reports & Statements Print)</h3>
+                </div>
+                <button type="button" class="btn btn-sm btn-success" onclick="app.openStockPrintModal()" style="font-weight: 700;">
+                  <span>🖨️ साठा अहवाल प्रिंट केंद्र उघडा</span>
+                </button>
+              </div>
+              <div class="card-body">
+                <p class="text-muted small mb-3">शासकीय तपासणी व मासिक वितरणासाठी आवश्यक असणारे तिन्ही साठा अहवाल एका क्लिकवर A4 आकारात थेट प्रिंट करा:</p>
+                
+                <div class="d-flex flex-wrap gap-2">
+                  <button type="button" class="btn btn-outline-success flex-1" style="min-width: 220px; font-weight: 700;" onclick="app.printStockBalanceReport()">
+                    <span>📦 1 एप्रिल / चालू शिल्लक धान्य प्रिंट (A4 Landscape)</span>
+                  </button>
+                  <button type="button" class="btn btn-outline-primary flex-1" style="min-width: 220px; font-weight: 700;" onclick="app.printStockReceiptsReport()">
+                    <span>🚚 आलेले धान्य आवक नोंदवही प्रिंट (A4 Portrait)</span>
+                  </button>
+                  <button type="button" class="btn btn-outline-warning flex-1" style="min-width: 220px; font-weight: 700; color: #92400e; border-color: #f59e0b;" onclick="app.printDamagedStockReport()">
+                    <span>⚠️ खराब धान्य नोंद व पंचनामा प्रिंट (A4 Portrait)</span>
+                  </button>
+                  <button type="button" class="btn btn-success flex-1" style="min-width: 220px; font-weight: 800;" onclick="app.printCombinedStockReports()">
+                    <span>📑 तिन्ही साठा अहवाल एकत्र प्रिंट (3-in-1 Combined)</span>
                   </button>
                 </div>
               </div>
@@ -1760,19 +1814,19 @@
             <!-- Opening / Old Stock Settings Card -->
             <div class="card settings-card">
               <div class="card-header flex-between">
-                <h3 class="card-title">📦 4. मागील शिल्लक धान्य / सुरुवातीचा साठा (Opening / Old Stock Settings)</h3>
+                <h3 class="card-title">📦 4. 1 एप्रिल रोजी शिल्लक साठा / सुरुवातीचा साठा (1st April Opening Stock)</h3>
                 <button class="btn btn-sm btn-primary" onclick="app.saveOldStockFromSettings()">
-                  <span>💾 मागील साठा जतन करा</span>
+                  <span>💾 1 एप्रिल रोजी शिल्लक साठा जतन करा</span>
                 </button>
               </div>
               <div class="card-body">
-                <p class="form-hint mb-3" style="font-size: 0.85rem; color: #475569;">शाळेकडील सुरुवातीची मूळ मागील शिल्लक (Opening Balance) येथे भरा किंवा संपादित करा. ही सर्व महिन्यांच्या हिशोबासाठी मूळ साठा म्हणून वापरली जाईल:</p>
+                <p class="form-hint mb-3" style="font-size: 0.85rem; color: #475569;">शाळेकडील 1 एप्रिल रोजी शिल्लक साठा (Opening Balance) येथे भरा किंवा संपादित करा. ही सर्व महिन्यांच्या हिशोबासाठी मूळ साठा म्हणून वापरली जाईल:</p>
                 <div class="stock-inputs-grid" id="oldStockSettingsGrid">
                   <!-- Dynamic Inputs Injected via JS -->
                 </div>
                 <div class="mt-3 text-right">
                   <button class="btn btn-primary" onclick="app.saveOldStockFromSettings()">
-                    <span>💾 मागील शिल्लक साठा जतन करा (Save Old Stock)</span>
+                    <span>💾 1 एप्रिल रोजी शिल्लक साठा जतन करा (Save 1st April Stock)</span>
                   </button>
                 </div>
               </div>
@@ -1924,6 +1978,10 @@
             <span class="drawer-tile-icon">📦</span>
             <span class="drawer-tile-label">साठा व्यवस्थापन</span>
           </button>
+          <button class="drawer-tile highlight-print" onclick="app.openStockPrintModal(); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">🖨️</span>
+            <span class="drawer-tile-label">साठा प्रिंट केंद्र</span>
+          </button>
           <button class="drawer-tile" onclick="app.switchTab('io'); app.closeMobileMoreDrawer();">
             <span class="drawer-tile-icon">🔄</span>
             <span class="drawer-tile-label">Excel आयात/निर्यात</span>
@@ -1995,12 +2053,12 @@
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
-            <h3 class="modal-title">✏️ मागील शिल्लक धान्य साठा संपादन (Edit Old Stock)</h3>
+            <h3 class="modal-title">✏️ 1 एप्रिल रोजी शिल्लक साठा संपादन (Edit 1st April Opening Stock)</h3>
             <button class="modal-close-btn" onclick="app.closeEditOldStockModal()">&times;</button>
           </div>
           <div class="modal-body">
             <form id="editOldStockForm" onsubmit="event.preventDefault(); app.saveOldStockFromModal();">
-              <p class="form-hint mb-3" style="font-size: 0.88rem; color: #334155;">शाळेकडील सुरुवातीचा शिल्लक माल (Opening Stock) कि.ग्रॅ. मध्ये भरा:</p>
+              <p class="form-hint mb-3" style="font-size: 0.88rem; color: #334155;">शाळेकडील 1 एप्रिल रोजी शिल्लक साठा (1st April Opening Stock) कि.ग्रॅ. मध्ये भरा:</p>
               
               <div class="stock-inputs-grid" id="oldStockInputsGrid">
                 <!-- Injected by JS -->
@@ -2008,7 +2066,7 @@
 
               <div class="modal-footer mt-4">
                 <button type="submit" class="btn btn-primary">
-                  <span>💾 मागील शिल्लक साठा जतन करा</span>
+                  <span>💾 1 एप्रिल रोजी शिल्लक साठा जतन करा</span>
                 </button>
                 <button type="button" class="btn btn-outline-secondary" onclick="app.closeEditOldStockModal()">
                   <span>रद्द करा</span>
@@ -2067,9 +2125,9 @@
                 </div>
 
                 <div class="form-group flex-1">
-                  <label for="newIngOpeningStock" class="form-label font-bold">सुरुवातीचा शिल्लक साठा (Opening Stock kg)</label>
+                  <label for="newIngOpeningStock" class="form-label font-bold">1 एप्रिल रोजी शिल्लक साठा (Opening Stock kg)</label>
                   <input type="number" step="0.001" id="newIngOpeningStock" class="form-control" placeholder="0.00 (ऋण / मायनस नोंदही शक्य)" value="0">
-                  <small class="form-hint">मागील शिल्लक साठा (मायनस असल्यास - टाका)</small>
+                  <small class="form-hint">1 एप्रिल रोजी शिल्लक साठा (मायनस असल्यास - टाका)</small>
                 </div>
               </div>
 
@@ -2127,6 +2185,88 @@
               </div>
 
             </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Stock Reports Print Center (साठा अहवाल प्रिंट केंद्र) -->
+    <div id="stockPrintModal" class="modal-backdrop" style="display: none; z-index: 100005;">
+      <div class="modal-dialog" style="max-width: 940px; width: 95vw;">
+        <div class="modal-content" style="border-top: 4px solid #16a34a;">
+          <div class="modal-header" style="background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);">
+            <div class="d-flex align-items-center gap-2">
+              <span style="font-size: 1.35rem;">🖨️</span>
+              <h3 class="modal-title" style="color: #166534; font-weight: 800; margin: 0;">धान्य व किराणा साठा अहवाल प्रिंट केंद्र</h3>
+            </div>
+            <button class="modal-close-btn" onclick="app.closeStockPrintModal()">&times;</button>
+          </div>
+          <div class="modal-body" style="max-height: 85vh; overflow-y: auto;">
+            
+            <!-- Controls Bar: Report Type & Period Selector -->
+            <div class="card p-3 mb-3" style="background: #f8fafc; border: 1.5px solid #e2e8f0;">
+              <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="flex-1" style="min-width: 280px;">
+                  <label class="form-label font-bold" style="color: #1e293b; font-size: 0.88rem; margin-bottom: 0.35rem;">
+                    1. कोणता साठा अहवाल प्रिंट करायचा आहे?
+                  </label>
+                  <div class="d-flex flex-wrap gap-2" id="stockPrintTypeGroup">
+                    <button type="button" class="stock-type-pill active" data-type="shillak" onclick="app.setStockPrintType('shillak')">
+                      📦 शिल्लक साठा पत्रक
+                    </button>
+                    <button type="button" class="stock-type-pill" data-type="aalele" onclick="app.setStockPrintType('aalele')">
+                      🚚 आलेले धान्य आवक
+                    </button>
+                    <button type="button" class="stock-type-pill" data-type="kharab" onclick="app.setStockPrintType('kharab')">
+                      ⚠️ खराब धान्य नोंद
+                    </button>
+                    <button type="button" class="stock-type-pill" data-type="all" onclick="app.setStockPrintType('all')">
+                      📑 तिन्ही अहवाल एकत्र
+                    </button>
+                  </div>
+                </div>
+
+                <div style="min-width: 220px;">
+                  <label for="stockPrintPeriodMode" class="form-label font-bold" style="color: #1e293b; font-size: 0.88rem; margin-bottom: 0.35rem;">
+                    2. कालावधी निवडा:
+                  </label>
+                  <div class="d-flex gap-2 align-items-center">
+                    <select id="stockPrintPeriodMode" class="form-select form-select-sm" style="font-weight: 700; min-width: 150px;" onchange="app.onStockPeriodModeChange()">
+                      <option value="live">चालू आजअखेर साठा</option>
+                      <option value="month">विशिष्ट महिना</option>
+                    </select>
+                    <input type="month" id="stockPrintMonthPicker" class="form-control form-control-sm" style="display: none;" onchange="app.updateStockPrintPreview()">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Print Preview Container -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span style="font-size: 0.85rem; font-weight: 700; color: #475569;">
+                📄 प्रिंट पूर्वदृश्य (Print Preview):
+              </span>
+              <span class="badge badge-success" id="stockPrintOrientationBadge">A4 Landscape</span>
+            </div>
+
+            <div class="stock-print-modal-preview" id="stockPrintPreviewContainer">
+              <!-- Rendered dynamically via JS -->
+            </div>
+
+            <div class="modal-footer mt-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
+              <button type="button" class="btn btn-outline-secondary" onclick="app.closeStockPrintModal()">
+                <span>❌ बंद करा</span>
+              </button>
+              <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-primary" onclick="app.openStockReportInNewWindow()" title="नवीन विंडोमध्ये अहवाल उघडा किंवा PDF सेव्ह करा" style="font-weight: 700;">
+                  <span>📄 नवीन विंडोमध्ये पहा / सेव्ह करा</span>
+                </button>
+                <button type="button" class="btn btn-success px-4" style="font-weight: 800; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);" onclick="app.printCurrentModalStockReport()">
+                  <span>🖨️ थेट A4 प्रिंट काढा (Print Now)</span>
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -2288,9 +2428,6 @@
           </div>
         </div>
       </div>
-    </div>
-    <div id="printSlipContainer" class="print-only-slip"></div>
-
     <!-- Toast Notification Container -->
     <div id="toastContainer" class="toast-container"></div>
 
@@ -2398,6 +2535,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Dedicated Print Container (Direct child of body to guarantee clean print rendering) -->
+  <div id="printSlipContainer" class="print-only-slip"></div>
 
   <!-- Application Logic Scripts -->
   <script src="cloud-sync.js"></script>

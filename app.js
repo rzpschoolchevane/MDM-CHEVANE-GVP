@@ -44,23 +44,23 @@ const app = {
 
     // Master Ingredients & Per-Child Rates (Exact Order as Requested: तांदूळ, मुगडाळ, तूरडाळ, मसूरडाळ...)
     ingredients: {
-      rice: { id: "rice", name: "तांदूळ", defaultRate: 0.10, unit: "kg", category: "grain" },
-      moong_dal: { id: "moong_dal", name: "मुगडाळ", defaultRate: 0.02, unit: "kg", category: "pulse" },
-      tur_dal: { id: "tur_dal", name: "तूरडाळ", defaultRate: 0.02, unit: "kg", category: "pulse" },
-      masoor_dal: { id: "masoor_dal", name: "मसूरडाळ", defaultRate: 0.02, unit: "kg", category: "pulse" },
-      matki: { id: "matki", name: "मटकी", defaultRate: 0.02, unit: "kg", category: "pulse" },
-      moong: { id: "moong", name: "मूग", defaultRate: 0.02, unit: "kg", category: "pulse" },
-      chavali: { id: "chavali", name: "चवळी", defaultRate: 0.02, unit: "kg", category: "pulse" },
-      chana: { id: "chana", name: "हरभरा", defaultRate: 0.02, unit: "kg", category: "pulse" },
-      vatana: { id: "vatana", name: "वाटाणा", defaultRate: 0.02, unit: "kg", category: "pulse" },
-      cumin: { id: "cumin", name: "जिरे", defaultRate: 0.00020, unit: "kg", category: "spice" },
-      mustard: { id: "mustard", name: "मोहरी", defaultRate: 0.00015, unit: "kg", category: "spice" },
-      turmeric: { id: "turmeric", name: "हळद", defaultRate: 0.00015, unit: "kg", category: "spice" },
-      chilli: { id: "chilli", name: "मिरची पावडर", defaultRate: 0.00300, unit: "kg", category: "spice" },
-      oil: { id: "oil", name: "सोयाबीन तेल", defaultRate: 0.00500, unit: "kg", category: "oil" },
-      salt: { id: "salt", name: "मीठ", defaultRate: 0.00070, unit: "kg", category: "salt" },
-      masala: { id: "masala", name: "कांदा-लसून मसाला", defaultRate: 0.00090, unit: "kg", category: "spice" },
-      soyavadi: { id: "soyavadi", name: "सोयावडी", defaultRate: 0.02, unit: "kg", category: "pulse" }
+      rice: { id: "rice", name: "तांदूळ", defaultRate: 0.10, ratePrimary: 0.10, rateUpper: 0.15, unit: "kg", category: "grain" },
+      moong_dal: { id: "moong_dal", name: "मुगडाळ", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+      tur_dal: { id: "tur_dal", name: "तूरडाळ", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+      masoor_dal: { id: "masoor_dal", name: "मसूरडाळ", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+      matki: { id: "matki", name: "मटकी", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+      moong: { id: "moong", name: "मूग", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+      chavali: { id: "chavali", name: "चवळी", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+      chana: { id: "chana", name: "हरभरा", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+      vatana: { id: "vatana", name: "वाटाणा", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+      cumin: { id: "cumin", name: "जिरे", defaultRate: 0.00020, ratePrimary: 0.00020, rateUpper: 0.00030, unit: "kg", category: "spice" },
+      mustard: { id: "mustard", name: "मोहरी", defaultRate: 0.00015, ratePrimary: 0.00015, rateUpper: 0.000225, unit: "kg", category: "spice" },
+      turmeric: { id: "turmeric", name: "हळद", defaultRate: 0.00015, ratePrimary: 0.00015, rateUpper: 0.000225, unit: "kg", category: "spice" },
+      chilli: { id: "chilli", name: "मिरची पावडर", defaultRate: 0.00300, ratePrimary: 0.00300, rateUpper: 0.00450, unit: "kg", category: "spice" },
+      oil: { id: "oil", name: "सोयाबीन तेल", defaultRate: 0.00500, ratePrimary: 0.00500, rateUpper: 0.00750, unit: "kg", category: "oil" },
+      salt: { id: "salt", name: "मीठ", defaultRate: 0.00070, ratePrimary: 0.00070, rateUpper: 0.00105, unit: "kg", category: "salt" },
+      masala: { id: "masala", name: "कांदा-लसून मसाला", defaultRate: 0.00090, ratePrimary: 0.00090, rateUpper: 0.00135, unit: "kg", category: "spice" },
+      soyavadi: { id: "soyavadi", name: "सोयावडी", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" }
     },
 
     // Master Menus & Associated Ingredients (4-Week Cyclic Timetable)
@@ -1156,7 +1156,24 @@ const app = {
 
       if (saved) {
         const parsed = JSON.parse(saved);
-        this.data.settings = Object.assign({}, this.data.settings, parsed.settings);
+        if (parsed.settings && typeof parsed.settings === 'object') {
+          Object.keys(parsed.settings).forEach(key => {
+            if (parsed.settings[key] !== '' && parsed.settings[key] !== null && parsed.settings[key] !== undefined) {
+              this.data.settings[key] = parsed.settings[key];
+            }
+          });
+        }
+        // Self-heal blank school name from registry if needed
+        if (!this.data.settings.schoolName || this.data.settings.schoolName.trim() === '' || this.data.settings.schoolName === 'शाळा') {
+          const regList = (typeof this.getRegisteredSchools === 'function') ? this.getRegisteredSchools() : [];
+          const regSchool = regList.find(s => s.udise === udise);
+          if (regSchool && regSchool.schoolName && !regSchool.schoolName.includes('(UDISE:')) {
+            this.data.settings.schoolName = regSchool.schoolName;
+            if (regSchool.centre && !this.data.settings.centre) this.data.settings.centre = regSchool.centre;
+            if (regSchool.taluka && !this.data.settings.taluka) this.data.settings.taluka = regSchool.taluka;
+            if (regSchool.district && !this.data.settings.district) this.data.settings.district = regSchool.district;
+          }
+        }
         this.data.initialStock = Object.assign({}, this.data.initialStock, parsed.initialStock);
         if (parsed.menus && Array.isArray(parsed.menus) && parsed.menus.length > 0) {
           this.data.menus = parsed.menus;
@@ -1254,23 +1271,23 @@ const app = {
       ];
 
       const defaultDefs = {
-        rice: { id: "rice", name: "तांदूळ", defaultRate: 0.10, unit: "kg", category: "grain" },
-        moong_dal: { id: "moong_dal", name: "मुगडाळ", defaultRate: 0.02, unit: "kg", category: "pulse" },
-        tur_dal: { id: "tur_dal", name: "तूरडाळ", defaultRate: 0.02, unit: "kg", category: "pulse" },
-        masoor_dal: { id: "masoor_dal", name: "मसूरडाळ", defaultRate: 0.02, unit: "kg", category: "pulse" },
-        matki: { id: "matki", name: "मटकी", defaultRate: 0.02, unit: "kg", category: "pulse" },
-        moong: { id: "moong", name: "मूग", defaultRate: 0.02, unit: "kg", category: "pulse" },
-        chavali: { id: "chavali", name: "चवळी", defaultRate: 0.02, unit: "kg", category: "pulse" },
-        chana: { id: "chana", name: "हरभरा", defaultRate: 0.02, unit: "kg", category: "pulse" },
-        vatana: { id: "vatana", name: "वाटाणा", defaultRate: 0.02, unit: "kg", category: "pulse" },
-        cumin: { id: "cumin", name: "जिरे", defaultRate: 0.00020, unit: "kg", category: "spice" },
-        mustard: { id: "mustard", name: "मोहरी", defaultRate: 0.00015, unit: "kg", category: "spice" },
-        turmeric: { id: "turmeric", name: "हळद", defaultRate: 0.00015, unit: "kg", category: "spice" },
-        chilli: { id: "chilli", name: "मिरची पावडर", defaultRate: 0.00300, unit: "kg", category: "spice" },
-        oil: { id: "oil", name: "सोयाबीन तेल", defaultRate: 0.00500, unit: "kg", category: "oil" },
-        salt: { id: "salt", name: "मीठ", defaultRate: 0.00070, unit: "kg", category: "salt" },
-        masala: { id: "masala", name: "कांदा-लसून मसाला", defaultRate: 0.00090, unit: "kg", category: "spice" },
-        soyavadi: { id: "soyavadi", name: "सोयावडी", defaultRate: 0.02, unit: "kg", category: "pulse" }
+        rice: { id: "rice", name: "तांदूळ", defaultRate: 0.10, ratePrimary: 0.10, rateUpper: 0.15, unit: "kg", category: "grain" },
+        moong_dal: { id: "moong_dal", name: "मुगडाळ", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+        tur_dal: { id: "tur_dal", name: "तूरडाळ", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+        masoor_dal: { id: "masoor_dal", name: "मसूरडाळ", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+        matki: { id: "matki", name: "मटकी", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+        moong: { id: "moong", name: "मूग", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+        chavali: { id: "chavali", name: "चवळी", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+        chana: { id: "chana", name: "हरभरा", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+        vatana: { id: "vatana", name: "वाटाणा", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" },
+        cumin: { id: "cumin", name: "जिरे", defaultRate: 0.00020, ratePrimary: 0.00020, rateUpper: 0.00030, unit: "kg", category: "spice" },
+        mustard: { id: "mustard", name: "मोहरी", defaultRate: 0.00015, ratePrimary: 0.00015, rateUpper: 0.000225, unit: "kg", category: "spice" },
+        turmeric: { id: "turmeric", name: "हळद", defaultRate: 0.00015, ratePrimary: 0.00015, rateUpper: 0.000225, unit: "kg", category: "spice" },
+        chilli: { id: "chilli", name: "मिरची पावडर", defaultRate: 0.00300, ratePrimary: 0.00300, rateUpper: 0.00450, unit: "kg", category: "spice" },
+        oil: { id: "oil", name: "सोयाबीन तेल", defaultRate: 0.00500, ratePrimary: 0.00500, rateUpper: 0.00750, unit: "kg", category: "oil" },
+        salt: { id: "salt", name: "मीठ", defaultRate: 0.00070, ratePrimary: 0.00070, rateUpper: 0.00105, unit: "kg", category: "salt" },
+        masala: { id: "masala", name: "कांदा-लसून मसाला", defaultRate: 0.00090, ratePrimary: 0.00090, rateUpper: 0.00135, unit: "kg", category: "spice" },
+        soyavadi: { id: "soyavadi", name: "सोयावडी", defaultRate: 0.02, ratePrimary: 0.02, rateUpper: 0.03, unit: "kg", category: "pulse" }
       };
 
       const orderedIngs = {};
@@ -1280,8 +1297,13 @@ const app = {
         if (srcIngs[k]) {
           orderedIngs[k] = Object.assign({}, defaultDefs[k], srcIngs[k]);
         } else {
-          orderedIngs[k] = defaultDefs[k];
+          orderedIngs[k] = Object.assign({}, defaultDefs[k]);
         }
+        const cur = orderedIngs[k];
+        const defR = (cur.defaultRate !== undefined) ? cur.defaultRate : (cur.ratePrimary !== undefined ? cur.ratePrimary : 0.02);
+        cur.defaultRate = defR;
+        if (cur.ratePrimary === undefined) cur.ratePrimary = defR;
+        if (cur.rateUpper === undefined) cur.rateUpper = +(defR * 1.5).toFixed(5);
       });
 
       // Preserve any custom ingredients explicitly created by the user (starting with custom_)
@@ -2020,50 +2042,10 @@ const app = {
   },
 
   /**
-   * Auto-save school & officer metadata quietly to prevent data loss
+   * Auto-save school & officer metadata quietly to prevent data loss (delegates to primary handler)
    */
-  autoSaveSchoolSettings() {
-    const sName = document.getElementById('setSchoolName');
-    if (sName && sName.value.trim()) this.data.settings.schoolName = sName.value.trim();
-
-    const u = document.getElementById('setUdise');
-    if (u) this.data.settings.udise = u.value.trim();
-
-    const c = document.getElementById('setCentre');
-    if (c) this.data.settings.centre = c.value.trim();
-
-    const t = document.getElementById('setTaluka');
-    if (t) this.data.settings.taluka = t.value.trim();
-
-    const d = document.getElementById('setDistrict');
-    if (d) this.data.settings.district = d.value.trim();
-
-    const p = document.getElementById('setPat');
-    if (p && parseInt(p.value)) this.data.settings.pat = parseInt(p.value);
-
-    const hm = document.getElementById('setHeadmaster');
-    if (hm) this.data.settings.headmaster = hm.value.trim();
-
-    const pres = document.getElementById('setPresident');
-    if (pres) this.data.settings.president = pres.value.trim();
-
-    const asst = document.getElementById('setAssistantTeacher');
-    if (asst) this.data.settings.assistantTeacher = asst.value.trim();
-
-    const cook = document.getElementById('setCookName');
-    if (cook) this.data.settings.cookName = cook.value.trim();
-
-    const fr = document.getElementById('setFuelRate');
-    if (fr && parseFloat(fr.value)) this.data.settings.fuelRate = parseFloat(fr.value);
-
-    const ch = document.getElementById('setCookHonorarium');
-    if (ch && parseInt(ch.value)) this.data.settings.cookHonorarium = parseInt(ch.value);
-
-    const cc = document.getElementById('setCookCount');
-    if (cc && parseInt(cc.value)) this.data.settings.cookCount = parseInt(cc.value);
-
-    this.saveState();
-    this.updateHeaderMeta();
+  saveSchoolSettingsFromDOM() {
+    this.autoSaveSchoolSettings();
   },
 
   /**
@@ -6088,9 +6070,38 @@ const app = {
       this.autoSaveSchoolSettings();
     }
 
-    const currentUdise = this.getActiveUdise() || '27240304501';
+    const currentUdise = this.getActiveUdise() || (this.data && this.data.settings && this.data.settings.udise) || '27240304501';
+
+    // Self-healing: if settings or schoolName is missing or empty, restore from registered schools
+    if (!this.data.settings) this.data.settings = {};
+    if (!this.data.settings.schoolName || this.data.settings.schoolName.trim() === '' || this.data.settings.schoolName === 'शाळा') {
+      const regSchools = (typeof this.getRegisteredSchools === 'function') ? this.getRegisteredSchools() : [];
+      const found = regSchools.find(s => s.udise === currentUdise);
+      if (found && found.schoolName && !found.schoolName.includes('(UDISE:')) {
+        this.data.settings.schoolName = found.schoolName;
+        if (found.centre && !this.data.settings.centre) this.data.settings.centre = found.centre;
+        if (found.taluka && !this.data.settings.taluka) this.data.settings.taluka = found.taluka;
+        if (found.district && !this.data.settings.district) this.data.settings.district = found.district;
+        if (found.pat && !this.data.settings.pat) this.data.settings.pat = found.pat;
+      }
+    }
+
     const schoolName = (this.data && this.data.settings && this.data.settings.schoolName) ? this.data.settings.schoolName : 'शाळा';
     const today = new Date().toISOString().substring(0, 10);
+
+    // Deep copy ingredients with synchronized defaultRate, ratePrimary, rateUpper
+    const exportedIngredients = {};
+    const srcIngs = this.data.ingredients || {};
+    Object.keys(srcIngs).forEach(k => {
+      const ing = Object.assign({}, srcIngs[k]);
+      const defR = (ing.defaultRate !== undefined) ? ing.defaultRate : (ing.ratePrimary !== undefined ? ing.ratePrimary : 0.02);
+      ing.defaultRate = defR;
+      if (ing.ratePrimary === undefined) ing.ratePrimary = defR;
+      if (ing.rateUpper === undefined) ing.rateUpper = +(defR * 1.5).toFixed(5);
+      exportedIngredients[k] = ing;
+    });
+
+    const exportedMenus = Array.isArray(this.data.menus) ? JSON.parse(JSON.stringify(this.data.menus)) : [];
 
     // 2. Prepare comprehensive backup payload (Compatible with both v2.0 and v2.1 PM Poshan / MDM formats)
     const backupPayload = {
@@ -6112,9 +6123,9 @@ const app = {
       initialStock: Object.assign({}, this.data.initialStock || {}),
       initialStockUpper: Object.assign({}, this.data.initialStockUpper || {}),
       // 3. Menus & Timetable (सेटिंग्जमधील सर्व मेनू व वेळापत्रक)
-      menus: Array.isArray(this.data.menus) ? JSON.parse(JSON.stringify(this.data.menus)) : [],
+      menus: exportedMenus,
       // 4. Ingredient Rules & Grammage Rates (मेन्यू प्रमाण, दर व घटक नावे)
-      ingredients: JSON.parse(JSON.stringify(this.data.ingredients || {})),
+      ingredients: exportedIngredients,
       // 5. Stock Receipts (आलेले धान्य आवक नोंदी)
       stockReceipts: Array.isArray(this.data.stockReceipts) ? JSON.parse(JSON.stringify(this.data.stockReceipts)) : [],
       stockReceiptsUpper: Array.isArray(this.data.stockReceiptsUpper) ? JSON.parse(JSON.stringify(this.data.stockReceiptsUpper)) : [],
@@ -6247,11 +6258,28 @@ const app = {
 
         // 1. Restore School Settings & UDISE
         if (hasSettings) {
-          this.data.settings = Object.assign({}, this.data.settings, targetSettings);
+          const cleanRestored = {};
+          for (const [k, v] of Object.entries(targetSettings)) {
+            if (v !== undefined && v !== null && v !== '') {
+              cleanRestored[k] = v;
+            }
+          }
+          this.data.settings = Object.assign({}, this.data.settings || {}, cleanRestored);
         }
         if (targetUdise && /^\d{11}$/.test(targetUdise)) {
           this.data.settings.udise = targetUdise;
           localStorage.setItem(this.ACTIVE_UDISE_STORAGE_KEY, targetUdise);
+        }
+        // Self-heal schoolName from registry if still blank
+        if (!this.data.settings.schoolName || this.data.settings.schoolName.trim() === '' || this.data.settings.schoolName === 'शाळा') {
+          const regList = (typeof this.getRegisteredSchools === 'function') ? this.getRegisteredSchools() : [];
+          const found = regList.find(s => s.udise === targetUdise);
+          if (found && found.schoolName && !found.schoolName.includes('(UDISE:')) {
+            this.data.settings.schoolName = found.schoolName;
+            if (found.centre && !this.data.settings.centre) this.data.settings.centre = found.centre;
+            if (found.taluka && !this.data.settings.taluka) this.data.settings.taluka = found.taluka;
+            if (found.district && !this.data.settings.district) this.data.settings.district = found.district;
+          }
         }
         this.registerSchool(this.data.settings);
 
@@ -6265,12 +6293,25 @@ const app = {
 
         // 3. Restore Menus & Timetable (सेटिंग्जमधील सर्व मेनू)
         if (hasMenus && dataToRestore.menus.length > 0) {
-          this.data.menus = dataToRestore.menus;
+          this.data.menus = JSON.parse(JSON.stringify(dataToRestore.menus));
         }
 
         // 4. Restore Ingredient Rules & Rates (मेन्यू प्रमाण, घटक दर व नावे)
         if (hasIngredients) {
-          this.data.ingredients = Object.assign({}, this.data.ingredients, dataToRestore.ingredients);
+          const incomingIngs = dataToRestore.ingredients;
+          Object.keys(incomingIngs).forEach(k => {
+            const inc = incomingIngs[k];
+            if (this.data.ingredients[k]) {
+              this.data.ingredients[k] = Object.assign({}, this.data.ingredients[k], inc);
+            } else {
+              this.data.ingredients[k] = Object.assign({}, inc);
+            }
+            const cur = this.data.ingredients[k];
+            const defR = (cur.defaultRate !== undefined) ? cur.defaultRate : (cur.ratePrimary !== undefined ? cur.ratePrimary : 0.02);
+            cur.defaultRate = defR;
+            if (cur.ratePrimary === undefined) cur.ratePrimary = defR;
+            if (cur.rateUpper === undefined) cur.rateUpper = +(defR * 1.5).toFixed(5);
+          });
         }
 
         // 5. Restore Received Stock Receipts (आलेले धान्य नोंदी)
@@ -6323,10 +6364,16 @@ const app = {
         this.updateHeaderMeta();
         this.populateMenuDropdown();
         this.renderManualGrainsCheckboxes();
-        if (typeof this.populateSchoolSelector === 'function') {
-          this.populateSchoolSelector();
-        } else if (typeof this.renderRegisteredSchoolsList === 'function') {
-          this.renderRegisteredSchoolsList();
+        this.renderMenusInSettings();
+        this.renderSettingsView();
+        try {
+          if (typeof this.populateSchoolSelector === 'function') {
+            this.populateSchoolSelector();
+          } else if (typeof this.renderRegisteredSchoolsList === 'function') {
+            this.renderRegisteredSchoolsList();
+          }
+        } catch (selectorErr) {
+          console.warn("School selector refresh warning:", selectorErr);
         }
         this.refreshAllViews();
         this.renderCurrentTab();
@@ -6487,6 +6534,8 @@ const app = {
         const val = parseFloat(rateInput.value);
         if (!isNaN(val) && val >= 0) {
           this.data.ingredients[key].defaultRate = val;
+          this.data.ingredients[key].ratePrimary = val;
+          this.data.ingredients[key].rateUpper = +(val * 1.5).toFixed(5);
         }
       }
     }
@@ -6556,34 +6605,74 @@ const app = {
     const sCookH = document.getElementById('setCookHonorarium');
     const sCookC = document.getElementById('setCookCount');
 
-    if (sName) this.data.settings.schoolName = sName.value.trim();
-    if (uDise) {
+    let changed = false;
+    if (sName && sName.value && sName.value.trim()) {
+      this.data.settings.schoolName = sName.value.trim();
+      changed = true;
+    }
+    if (uDise && uDise.value && uDise.value.trim()) {
       const cleanU = uDise.value.trim();
       this.data.settings.udise = cleanU;
       if (cleanU.length === 11) {
         localStorage.setItem(this.ACTIVE_UDISE_STORAGE_KEY, cleanU);
       }
+      changed = true;
     }
-    if (sCentre) this.data.settings.centre = sCentre.value.trim();
-    if (sTaluka) this.data.settings.taluka = sTaluka.value.trim();
-    if (sDist) this.data.settings.district = sDist.value.trim();
-    if (sPat) this.data.settings.pat = parseInt(sPat.value) || 9;
-    if (sHead) this.data.settings.headmaster = sHead.value.trim();
-    if (sPres) this.data.settings.president = sPres.value.trim();
-    if (sAsst) this.data.settings.assistantTeacher = sAsst.value.trim();
-    if (sCook) this.data.settings.cookName = sCook.value.trim();
-    if (sFuel) this.data.settings.fuelRate = parseFloat(sFuel.value) || 1.51;
-    if (sCookH) this.data.settings.cookHonorarium = parseInt(sCookH.value) || 2500;
-    if (sCookC) this.data.settings.cookCount = parseInt(sCookC.value) || 1;
+    if (sCentre && sCentre.value && sCentre.value.trim()) {
+      this.data.settings.centre = sCentre.value.trim();
+      changed = true;
+    }
+    if (sTaluka && sTaluka.value && sTaluka.value.trim()) {
+      this.data.settings.taluka = sTaluka.value.trim();
+      changed = true;
+    }
+    if (sDist && sDist.value && sDist.value.trim()) {
+      this.data.settings.district = sDist.value.trim();
+      changed = true;
+    }
+    if (sPat && parseInt(sPat.value)) {
+      this.data.settings.pat = parseInt(sPat.value);
+      changed = true;
+    }
+    if (sHead && sHead.value && sHead.value.trim()) {
+      this.data.settings.headmaster = sHead.value.trim();
+      changed = true;
+    }
+    if (sPres && sPres.value && sPres.value.trim()) {
+      this.data.settings.president = sPres.value.trim();
+      changed = true;
+    }
+    if (sAsst && sAsst.value && sAsst.value.trim()) {
+      this.data.settings.assistantTeacher = sAsst.value.trim();
+      changed = true;
+    }
+    if (sCook && sCook.value && sCook.value.trim()) {
+      this.data.settings.cookName = sCook.value.trim();
+      changed = true;
+    }
+    if (sFuel && parseFloat(sFuel.value)) {
+      this.data.settings.fuelRate = parseFloat(sFuel.value);
+      changed = true;
+    }
+    if (sCookH && parseInt(sCookH.value)) {
+      this.data.settings.cookHonorarium = parseInt(sCookH.value);
+      changed = true;
+    }
+    if (sCookC && parseInt(sCookC.value)) {
+      this.data.settings.cookCount = parseInt(sCookC.value);
+      changed = true;
+    }
 
-    this.saveState();
-    this.updateHeaderMeta();
-    this.renderQuickAttendanceChips();
-    this.onInputsChanged();
-    this.renderDailyRegister();
-    this.renderMonthlyExcelSheet();
-    this.renderFormB();
-    this.renderYearlyReport();
+    if (changed) {
+      this.saveState();
+      this.updateHeaderMeta();
+      if (typeof this.renderQuickAttendanceChips === 'function') this.renderQuickAttendanceChips();
+      if (typeof this.onInputsChanged === 'function') this.onInputsChanged();
+      if (typeof this.renderDailyRegister === 'function') this.renderDailyRegister();
+      if (typeof this.renderMonthlyExcelSheet === 'function') this.renderMonthlyExcelSheet();
+      if (typeof this.renderFormB === 'function') this.renderFormB();
+      if (typeof this.renderYearlyReport === 'function') this.renderYearlyReport();
+    }
   },
 
   openAddIngredientModal() {
@@ -6875,6 +6964,8 @@ const app = {
       const rate = parseFloat(inp.value);
       if (key && !isNaN(rate) && this.data.ingredients[key]) {
         this.data.ingredients[key].defaultRate = rate;
+        this.data.ingredients[key].ratePrimary = rate;
+        this.data.ingredients[key].rateUpper = +(rate * 1.5).toFixed(5);
       }
     });
 
@@ -6901,6 +6992,8 @@ const app = {
       const rate = parseFloat(inp.value);
       if (key && !isNaN(rate) && this.data.ingredients[key]) {
         this.data.ingredients[key].defaultRate = rate;
+        this.data.ingredients[key].ratePrimary = rate;
+        this.data.ingredients[key].rateUpper = +(rate * 1.5).toFixed(5);
       }
     });
 

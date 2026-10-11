@@ -800,6 +800,12 @@ const app = {
     }
   },
 
+  populateSchoolSelector() {
+    if (typeof this.renderRegisteredSchoolsList === 'function') {
+      this.renderRegisteredSchoolsList();
+    }
+  },
+
   // =========================================================================
   // ACCESS CONTROL: ACTIVATION & SCHOOL UDISE LOGIN
   // =========================================================================
@@ -2140,11 +2146,21 @@ const app = {
     this.onInputsChanged();
   },
 
+  activeReportsSubtab: 'monthly',
+
   /**
-   * Switch Active Tab
+   * Switch Active Tab (With unified 'reports' hub and backward compatible redirects)
    */
   switchTab(tabId) {
-    this.currentTab = tabId;
+    if (tabId === 'monthly' || tabId === 'formb' || tabId === 'yearly') {
+      const sub = tabId;
+      this.currentTab = 'reports';
+      this.activeReportsSubtab = sub;
+      tabId = 'reports';
+    } else {
+      this.currentTab = tabId;
+    }
+
     document.querySelectorAll('.nav-tab').forEach(t => {
       t.classList.toggle('active', t.dataset.tab === tabId);
     });
@@ -2158,6 +2174,50 @@ const app = {
     });
 
     this.renderCurrentTab();
+  },
+
+  /**
+   * Switch Reports Sub-tab (मासिक अहवाल, प्रपत्र ब, वार्षिक अहवाल)
+   */
+  switchReportsSubtab(subtabId) {
+    if (!['monthly', 'formb', 'yearly'].includes(subtabId)) {
+      subtabId = 'monthly';
+    }
+    this.activeReportsSubtab = subtabId;
+
+    // 1. Update subtab button pills
+    document.querySelectorAll('.reports-subtab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.subtab === subtabId);
+    });
+
+    // 2. Toggle subtab panels
+    const panels = {
+      monthly: document.getElementById('subtab-panel-monthly') || document.getElementById('tab-monthly'),
+      formb: document.getElementById('subtab-panel-formb') || document.getElementById('tab-formb'),
+      yearly: document.getElementById('subtab-panel-yearly') || document.getElementById('tab-yearly')
+    };
+
+    Object.keys(panels).forEach(k => {
+      const p = panels[k];
+      if (p) {
+        if (k === subtabId) {
+          p.style.display = 'block';
+          p.classList.add('active');
+        } else {
+          p.style.display = 'none';
+          p.classList.remove('active');
+        }
+      }
+    });
+
+    // 3. Render specific report
+    if (subtabId === 'monthly') {
+      this.renderMonthlyExcelSheet();
+    } else if (subtabId === 'formb') {
+      this.renderFormB();
+    } else if (subtabId === 'yearly') {
+      this.renderYearlyReport();
+    }
   },
 
   openMobileMoreDrawer() {
@@ -2188,14 +2248,17 @@ const app = {
       case 'register':
         this.renderDailyRegister();
         break;
+      case 'reports':
+        this.switchReportsSubtab(this.activeReportsSubtab || 'monthly');
+        break;
       case 'monthly':
-        this.renderMonthlyExcelSheet();
+        this.switchReportsSubtab('monthly');
         break;
       case 'formb':
-        this.renderFormB();
+        this.switchReportsSubtab('formb');
         break;
       case 'yearly':
-        this.renderYearlyReport();
+        this.switchReportsSubtab('yearly');
         break;
       case 'taste':
         this.onTasteTabOpen();
@@ -5674,14 +5737,13 @@ const app = {
     this.setPrintPageOrientation(orientation, 'A4', orientation === 'landscape' ? '4mm 4mm 4mm 4mm' : '6mm 7mm 6mm 7mm');
 
     document.body.classList.remove('print-landscape', 'print-monthly', 'print-yearly', 'print-register', 'print-legal', 'print-slip', 'print-formb', 'print-taste', 'printing-taste');
-    document.body.classList.add('print-stock-report', orientation === 'landscape' ? 'print-landscape' : 'print-portrait');
+    document.body.classList.add('print-slip', 'print-stock-report', orientation === 'landscape' ? 'print-landscape' : 'print-portrait');
 
     let cleanedUp = false;
     const cleanup = () => {
       if (cleanedUp) return;
       cleanedUp = true;
-      document.body.classList.remove('print-stock-report', 'print-landscape', 'print-portrait');
-      if (printContainer) printContainer.innerHTML = '';
+      document.body.classList.remove('print-stock-report', 'print-slip', 'print-landscape', 'print-portrait');
       window.removeEventListener('afterprint', cleanup);
     };
 
@@ -5689,9 +5751,7 @@ const app = {
 
     setTimeout(() => {
       window.print();
-      // Fallback cleanup in case afterprint does not fire in mobile or embedded browser
-      setTimeout(cleanup, 2000);
-    }, 150);
+    }, 250);
   },
 
   /**
@@ -5928,6 +5988,7 @@ const app = {
   },
 
   printCurrentModalStockReport() {
+    this.closeStockPrintModal();
     const mode = document.getElementById('stockPrintPeriodMode')?.value || 'live';
     const monthKey = mode === 'month' ? document.getElementById('stockPrintMonthPicker')?.value : null;
 
@@ -6027,36 +6088,50 @@ const app = {
       this.autoSaveSchoolSettings();
     }
 
-    const currentUdise = this.getActiveUdise();
+    const currentUdise = this.getActiveUdise() || '27240304501';
     const schoolName = (this.data && this.data.settings && this.data.settings.schoolName) ? this.data.settings.schoolName : 'शाळा';
+    const today = new Date().toISOString().substring(0, 10);
 
-    // 2. Prepare comprehensive backup payload
+    // 2. Prepare comprehensive backup payload (Compatible with both v2.0 and v2.1 PM Poshan / MDM formats)
     const backupPayload = {
       app: "PM POSHAN शालेय पोषण आहार प्रणाली",
       appCreator: "श्री गणेश विलास पष्टे",
-      version: "2.0",
-      backupType: "FULL_MDM_DATA_BACKUP",
+      author: "श्री गणेश विलास पष्टे",
+      version: "2.1",
+      backupVersion: "2.1",
+      backupType: "MDM_SCHOOL_FULL_BACKUP",
       exportedAt: new Date().toISOString(),
+      exportDate: today,
+      schoolUdise: currentUdise,
+      schoolCode: currentUdise,
       udise: currentUdise,
       schoolName: schoolName,
       // 1. School & Officers Settings (शाळा व अधिकाऱ्यांचे संपूर्ण तपशील)
       settings: Object.assign({}, this.data.settings || {}),
       // 2. 1st April Opening Stock (1 एप्रिल रोजी शिल्लक साठा)
       initialStock: Object.assign({}, this.data.initialStock || {}),
+      initialStockUpper: Object.assign({}, this.data.initialStockUpper || {}),
       // 3. Menus & Timetable (सेटिंग्जमधील सर्व मेनू व वेळापत्रक)
       menus: Array.isArray(this.data.menus) ? JSON.parse(JSON.stringify(this.data.menus)) : [],
       // 4. Ingredient Rules & Grammage Rates (मेन्यू प्रमाण, दर व घटक नावे)
       ingredients: JSON.parse(JSON.stringify(this.data.ingredients || {})),
       // 5. Stock Receipts (आलेले धान्य आवक नोंदी)
       stockReceipts: Array.isArray(this.data.stockReceipts) ? JSON.parse(JSON.stringify(this.data.stockReceipts)) : [],
+      stockReceiptsUpper: Array.isArray(this.data.stockReceiptsUpper) ? JSON.parse(JSON.stringify(this.data.stockReceiptsUpper)) : [],
       // 6. Damaged / Spoiled Stock (खराब / नासाडी धान्य नोंदी)
       damagedStock: Array.isArray(this.data.damagedStock) ? JSON.parse(JSON.stringify(this.data.damagedStock)) : [],
+      damagedStockUpper: Array.isArray(this.data.damagedStockUpper) ? JSON.parse(JSON.stringify(this.data.damagedStockUpper)) : [],
+      stockTransfers: Array.isArray(this.data.stockTransfers) ? JSON.parse(JSON.stringify(this.data.stockTransfers)) : [],
       // 7. Daily Records (दैनंदिन पोषण आहार नोंदी)
       records: Object.assign({}, this.data.records || {}),
+      recordsUpper: Object.assign({}, this.data.recordsUpper || {}),
       // 8. Taste Register (चव नोंदवही)
       tasteRecords: Object.assign({}, this.data.tasteRecords || {}),
+      tasteRecordsUpper: Object.assign({}, this.data.tasteRecordsUpper || {}),
       // 9. Custom Demands (प्रपत्र ब मागणी)
-      customDemands: Object.assign({}, this.data.customDemands || {})
+      customDemands: Object.assign({}, this.data.customDemands || {}),
+      customDemandsUpper: Object.assign({}, this.data.customDemandsUpper || {}),
+      formBRemarks: Object.assign({}, this.data.formBRemarks || {})
     };
 
     const jsonStr = JSON.stringify(backupPayload, null, 2);
@@ -6064,16 +6139,30 @@ const app = {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const cleanName = schoolName.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\u0900-\u097F]/g, '');
-    a.download = `MDM_Full_Backup_${cleanName}_${currentUdise}_${new Date().toISOString().substring(0, 10)}.json`;
+    a.download = `${currentUdise}_${today}.json`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    this.showToast('💾 संपूर्ण डेटा बॅकअप फाईल (शाळा, 1 एप्रिल साठा, मेन्यू, दर व दैनिक नोंदी) सेव्ह झाली.', 'success');
+    this.showToast(`💾 संपूर्ण डेटा बॅकअप फाईल सेव्ह झाली: ${currentUdise}_${today}.json`, 'success');
   },
 
   handleJsonRestore(event) {
-    const file = event.target.files[0];
+    const file = event.target.files && event.target.files[0];
     if (!file) return;
+
+    // Create an automatic pre-restore safety snapshot before overwriting anything
+    try {
+      const preSnapshot = {
+        timestamp: new Date().toISOString(),
+        udise: this.getActiveUdise(),
+        schoolName: (this.data && this.data.settings && this.data.settings.schoolName) || '',
+        data: this.data
+      };
+      localStorage.setItem('MDM_PRE_RESTORE_SAFETY_SNAPSHOT', JSON.stringify(preSnapshot));
+    } catch (snapErr) {
+      console.warn("Safety snapshot warning:", snapErr);
+    }
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -6084,76 +6173,161 @@ const app = {
           return;
         }
 
-        const hasSettings = !!(parsed.settings && typeof parsed.settings === 'object');
-        const hasRecords = !!(parsed.records && typeof parsed.records === 'object');
-        const hasInitialStock = !!(parsed.initialStock && typeof parsed.initialStock === 'object');
-        const hasMenus = !!(parsed.menus && Array.isArray(parsed.menus));
-        const hasIngredients = !!(parsed.ingredients && typeof parsed.ingredients === 'object');
+        // Support ALL_SCHOOLS_COMBINED if imported from admin
+        if (parsed.backupType === 'ALL_SCHOOLS_COMBINED' && Array.isArray(parsed.schools)) {
+          let count = 0;
+          for (const sch of parsed.schools) {
+            const u = sch.udise;
+            const sData = sch.appData || sch;
+            if (u && sData) {
+              localStorage.setItem(`MDM_DATA_${u}`, JSON.stringify(sData));
+              localStorage.setItem(`MDM_BACKUP_${u}`, JSON.stringify(sData));
+              localStorage.setItem('MDM_SAFE_BACKUP_' + u, JSON.stringify(sData));
+              const schSettings = sData.settings || {};
+              this.registerSchool({
+                udise: u,
+                schoolName: sch.schoolName || schSettings.schoolName || '',
+                centre: sch.centre || schSettings.centre || '',
+                taluka: sch.taluka || schSettings.taluka || '',
+                district: sch.district || schSettings.district || '',
+                pat: sch.pat || schSettings.pat || 9,
+                patPrimary: sch.patPrimary || schSettings.patPrimary || 9,
+                patUpper: sch.patUpper || schSettings.patUpper || 15,
+                schoolLevel: sch.schoolLevel || schSettings.schoolLevel || 'both'
+              });
+              count++;
+            }
+          }
+          const curU = this.getActiveUdise();
+          this.loadState(curU);
+          this.showToast(`✅ एकत्रित बॅकअपमधून सर्व ${count} शाळांचा संपूर्ण डेटा यशस्वीरित्या रिस्टोअर झाला!`, 'success');
+          this.refreshAllViews();
+          return;
+        }
 
-        if (!hasSettings && !hasRecords && !hasInitialStock) {
+        const dataToRestore = parsed.appData || parsed;
+        const targetSettings = dataToRestore.settings || parsed.settings || {};
+
+        const hasSettings = !!(targetSettings && typeof targetSettings === 'object' && Object.keys(targetSettings).length > 0);
+        const hasRecords = !!(dataToRestore.records && typeof dataToRestore.records === 'object');
+        const hasInitialStock = !!(dataToRestore.initialStock && typeof dataToRestore.initialStock === 'object');
+        const hasMenus = !!(dataToRestore.menus && Array.isArray(dataToRestore.menus));
+        const hasIngredients = !!(dataToRestore.ingredients && typeof dataToRestore.ingredients === 'object');
+
+        if (!hasSettings && !hasRecords && !hasInitialStock && !hasMenus) {
           alert('❌ या फाईलमध्ये शालेय पोषण आहाराचा वैध डेटा आढळला नाही.');
           return;
         }
 
-        // 1. Restore School Settings & UDISE (शाळा व अधिकारी तपशील)
-        if (hasSettings) {
-          this.data.settings = Object.assign({}, this.data.settings, parsed.settings);
-          if (parsed.settings.udise && String(parsed.settings.udise).trim().length === 11) {
-            const cleanU = String(parsed.settings.udise).trim();
-            this.data.settings.udise = cleanU;
-            localStorage.setItem(this.ACTIVE_UDISE_STORAGE_KEY, cleanU);
+        // Extract UDISE code from candidates
+        const candidates = [
+          parsed.schoolUdise,
+          parsed.schoolCode,
+          parsed.udise,
+          targetSettings.udise,
+          targetSettings.uDise,
+          dataToRestore.schoolUdise,
+          dataToRestore.schoolCode,
+          dataToRestore.udise
+        ];
+        let targetUdise = '';
+        for (const c of candidates) {
+          if (c && /^\d{11}$/.test(String(c).trim())) {
+            targetUdise = String(c).trim();
+            break;
           }
-          this.registerSchool(this.data.settings);
         }
+        if (!targetUdise && file && file.name) {
+          const m = file.name.trim().match(/(?:^|[^0-9])(\d{11})(?:[^0-9]|$)/);
+          if (m && /^\d{11}$/.test(m[1])) targetUdise = m[1];
+        }
+        if (!targetUdise) {
+          targetUdise = this.getActiveUdise();
+        }
+
+        // 1. Restore School Settings & UDISE
+        if (hasSettings) {
+          this.data.settings = Object.assign({}, this.data.settings, targetSettings);
+        }
+        if (targetUdise && /^\d{11}$/.test(targetUdise)) {
+          this.data.settings.udise = targetUdise;
+          localStorage.setItem(this.ACTIVE_UDISE_STORAGE_KEY, targetUdise);
+        }
+        this.registerSchool(this.data.settings);
 
         // 2. Restore 1st April Opening Stock (1 एप्रिल रोजी शिल्लक साठा)
         if (hasInitialStock) {
-          this.data.initialStock = Object.assign({}, this.data.initialStock, parsed.initialStock);
+          this.data.initialStock = Object.assign({}, this.data.initialStock, dataToRestore.initialStock);
+        }
+        if (dataToRestore.initialStockUpper && typeof dataToRestore.initialStockUpper === 'object') {
+          this.data.initialStockUpper = Object.assign({}, this.data.initialStockUpper || {}, dataToRestore.initialStockUpper);
         }
 
         // 3. Restore Menus & Timetable (सेटिंग्जमधील सर्व मेनू)
-        if (hasMenus && parsed.menus.length > 0) {
-          this.data.menus = parsed.menus;
+        if (hasMenus && dataToRestore.menus.length > 0) {
+          this.data.menus = dataToRestore.menus;
         }
 
-        // 4. Restore Ingredient Rules & Grammage Rates (मेन्यू प्रमाण, घटक दर व नावे)
+        // 4. Restore Ingredient Rules & Rates (मेन्यू प्रमाण, घटक दर व नावे)
         if (hasIngredients) {
-          this.data.ingredients = Object.assign({}, this.data.ingredients, parsed.ingredients);
+          this.data.ingredients = Object.assign({}, this.data.ingredients, dataToRestore.ingredients);
         }
 
         // 5. Restore Received Stock Receipts (आलेले धान्य नोंदी)
-        if (Array.isArray(parsed.stockReceipts)) {
-          this.data.stockReceipts = parsed.stockReceipts;
+        if (Array.isArray(dataToRestore.stockReceipts)) {
+          this.data.stockReceipts = dataToRestore.stockReceipts;
+        }
+        if (Array.isArray(dataToRestore.stockReceiptsUpper)) {
+          this.data.stockReceiptsUpper = dataToRestore.stockReceiptsUpper;
         }
 
         // 6. Restore Damaged Stock (खराब / नासाडी धान्य नोंदी)
-        if (Array.isArray(parsed.damagedStock)) {
-          this.data.damagedStock = parsed.damagedStock;
+        if (Array.isArray(dataToRestore.damagedStock)) {
+          this.data.damagedStock = dataToRestore.damagedStock;
+        }
+        if (Array.isArray(dataToRestore.damagedStockUpper)) {
+          this.data.damagedStockUpper = dataToRestore.damagedStockUpper;
         }
 
         // 7. Restore Daily Records (दैनंदिन पोषण आहार नोंदी)
         if (hasRecords) {
-          this.data.records = parsed.records;
+          this.data.records = Object.assign({}, dataToRestore.records);
+        }
+        if (dataToRestore.recordsUpper && typeof dataToRestore.recordsUpper === 'object') {
+          this.data.recordsUpper = Object.assign({}, dataToRestore.recordsUpper);
         }
 
         // 8. Restore Taste Register (चव नोंदवही)
-        if (parsed.tasteRecords && typeof parsed.tasteRecords === 'object') {
-          this.data.tasteRecords = parsed.tasteRecords;
+        if (dataToRestore.tasteRecords && typeof dataToRestore.tasteRecords === 'object') {
+          this.data.tasteRecords = Object.assign({}, dataToRestore.tasteRecords);
+        }
+        if (dataToRestore.tasteRecordsUpper && typeof dataToRestore.tasteRecordsUpper === 'object') {
+          this.data.tasteRecordsUpper = Object.assign({}, dataToRestore.tasteRecordsUpper);
         }
 
         // 9. Restore Custom Demands (प्रपत्र ब मागणी)
-        if (parsed.customDemands && typeof parsed.customDemands === 'object') {
-          this.data.customDemands = parsed.customDemands;
+        if (dataToRestore.customDemands && typeof dataToRestore.customDemands === 'object') {
+          this.data.customDemands = Object.assign({}, dataToRestore.customDemands);
+        }
+        if (dataToRestore.customDemandsUpper && typeof dataToRestore.customDemandsUpper === 'object') {
+          this.data.customDemandsUpper = Object.assign({}, dataToRestore.customDemandsUpper);
+        }
+        if (dataToRestore.formBRemarks && typeof dataToRestore.formBRemarks === 'object') {
+          this.data.formBRemarks = Object.assign({}, dataToRestore.formBRemarks);
         }
 
         // Save completely to storage keys (primary + safety backup)
         this.saveState();
 
-        // Refresh all views, dropdowns, registered schools, and headers
+        // Refresh all views, dropdowns, registered schools, and headers safely
         this.updateHeaderMeta();
         this.populateMenuDropdown();
         this.renderManualGrainsCheckboxes();
-        this.renderRegisteredSchoolsList();
+        if (typeof this.populateSchoolSelector === 'function') {
+          this.populateSchoolSelector();
+        } else if (typeof this.renderRegisteredSchoolsList === 'function') {
+          this.renderRegisteredSchoolsList();
+        }
         this.refreshAllViews();
         this.renderCurrentTab();
 
@@ -6162,12 +6336,13 @@ const app = {
         this.showToast(`✅ संपूर्ण बॅकअप यशस्वीरीत्या रिस्टोअर झाला! (${schoolTitle} - ${recCount} दैनिक नोंदी, 1 एप्रिल साठा, मेनू व प्रमाण)`, 'success');
 
         // Reset file input so user can restore same file again if needed
-        event.target.value = '';
+        if (event.target) event.target.value = '';
       } catch (err) {
         alert('JSON फाईल वाचताना त्रुटी: ' + err.message);
       }
     };
     reader.readAsText(file);
+    if (event.target) event.target.value = '';
   },
 
   /**

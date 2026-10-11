@@ -220,17 +220,9 @@
             <span class="tab-icon">📖</span>
             <span class="tab-label">दैनिक नोंदवही</span>
           </button>
-          <button class="nav-tab" data-tab="monthly" onclick="app.switchTab('monthly')">
-            <span class="tab-icon">📊</span>
-            <span class="tab-label">मासिक अहवाल (Excel)</span>
-          </button>
-          <button class="nav-tab" data-tab="formb" onclick="app.switchTab('formb')">
-            <span class="tab-icon">📄</span>
-            <span class="tab-label">प्रपत्र ब (Form B)</span>
-          </button>
-          <button class="nav-tab" data-tab="yearly" onclick="app.switchTab('yearly')">
-            <span class="tab-icon">📅</span>
-            <span class="tab-label">वार्षिक अहवाल (1 एप्रिल - 31 मार्च)</span>
+          <button class="nav-tab" data-tab="reports" onclick="app.switchTab('reports')">
+            <span class="tab-icon">📑</span>
+            <span class="tab-label">अहवाल (Reports)</span>
           </button>
           <button class="nav-tab" data-tab="taste" onclick="app.switchTab('taste')">
             <span class="tab-icon">👅</span>
@@ -733,8 +725,31 @@
         </div>
       </section>
 
-      <!-- TAB 3: MONTHLY EXCEL SHEET VIEW (मासिक अहवाल - हुबेहूब मूळ एक्सेल फॉरमॅट) -->
-      <section id="tab-monthly" class="tab-panel">
+      <!-- TAB: UNIFIED REPORTS HUB (सर्व अहवाल: मासिक, प्रपत्र ब, वार्षिक) -->
+      <section id="tab-reports" class="tab-panel">
+        
+        <!-- Reports Sub-tab Navigation Pill Bar (Hidden during print) -->
+        <div class="container-fluid no-print mb-3">
+          <div class="reports-subtab-container">
+            <div class="reports-subtab-bar" role="tablist">
+              <button type="button" class="reports-subtab-btn active" id="subtabBtnMonthly" data-subtab="monthly" onclick="app.switchReportsSubtab('monthly')">
+                <span class="subtab-icon">📊</span>
+                <span class="subtab-text">मासिक अहवाल (Excel Sheet)</span>
+              </button>
+              <button type="button" class="reports-subtab-btn" id="subtabBtnFormb" data-subtab="formb" onclick="app.switchReportsSubtab('formb')">
+                <span class="subtab-icon">📄</span>
+                <span class="subtab-text">प्रपत्र ब (Form B)</span>
+              </button>
+              <button type="button" class="reports-subtab-btn" id="subtabBtnYearly" data-subtab="yearly" onclick="app.switchReportsSubtab('yearly')">
+                <span class="subtab-icon">📅</span>
+                <span class="subtab-text">वार्षिक अहवाल (Yearly Report)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUB-PANEL 1: MONTHLY EXCEL SHEET -->
+        <div id="subtab-panel-monthly" class="reports-subtab-panel active">
         <div class="container-fluid">
           
           <div class="panel-header no-print">
@@ -869,10 +884,10 @@
           </div>
 
         </div>
-      </section>
+        </div><!-- /#subtab-panel-monthly -->
 
-      <!-- TAB 4: FORM B / प्रपत्र ब (इ. 1 ते 5) -->
-      <section id="tab-formb" class="tab-panel">
+        <!-- SUB-PANEL 2: FORM B (प्रपत्र ब) -->
+        <div id="subtab-panel-formb" class="reports-subtab-panel" style="display: none;">
         <div class="container">
           
           <div class="panel-header no-print">
@@ -1002,10 +1017,10 @@
           </div>
 
         </div>
-      </section>
+        </div><!-- /#subtab-panel-formb -->
 
-      <!-- TAB 4.5: YEARLY REPORT (वार्षिक अहवाल: 1 एप्रिल ते 31 मार्च) -->
-      <section id="tab-yearly" class="tab-panel">
+        <!-- SUB-PANEL 3: YEARLY REPORT (वार्षिक अहवाल) -->
+        <div id="subtab-panel-yearly" class="reports-subtab-panel" style="display: none;">
         <div class="container-fluid">
           
           <div class="panel-header">
@@ -1136,7 +1151,8 @@
           </div>
 
         </div>
-      </section>
+        </div><!-- /#subtab-panel-yearly -->
+      </section><!-- /#tab-reports -->
 
       <!-- TAB: TASTE REGISTER (पोषण आहार चव नोंदवही) -->
       <section id="tab-taste" class="tab-panel">
@@ -1916,9 +1932,9 @@
         <span class="bottom-nav-icon">📖</span>
         <span class="bottom-nav-label">नोंदवही</span>
       </button>
-      <button class="bottom-nav-item" data-tab="monthly" onclick="app.switchTab('monthly')">
-        <span class="bottom-nav-icon">📊</span>
-        <span class="bottom-nav-label">मासिक</span>
+      <button class="bottom-nav-item" data-tab="reports" onclick="app.switchTab('reports')">
+        <span class="bottom-nav-icon">📑</span>
+        <span class="bottom-nav-label">अहवाल</span>
       </button>
       <button class="bottom-nav-item" data-tab="taste" onclick="app.switchTab('taste')">
         <span class="bottom-nav-icon">👅</span>
@@ -1958,9 +1974,9 @@
             <span class="drawer-tile-icon">📖</span>
             <span class="drawer-tile-label">नोंदवही</span>
           </button>
-          <button class="drawer-tile" onclick="app.switchTab('monthly'); app.closeMobileMoreDrawer();">
-            <span class="drawer-tile-icon">📊</span>
-            <span class="drawer-tile-label">मासिक अहवाल</span>
+          <button class="drawer-tile" onclick="app.switchTab('reports'); app.closeMobileMoreDrawer();">
+            <span class="drawer-tile-icon">📑</span>
+            <span class="drawer-tile-label">अहवाल केंद्र</span>
           </button>
           <button class="drawer-tile" onclick="app.switchTab('formb'); app.closeMobileMoreDrawer();">
             <span class="drawer-tile-icon">📄</span>
